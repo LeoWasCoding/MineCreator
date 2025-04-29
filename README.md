@@ -60,8 +60,6 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
     }
   }
   ```
-## Note
-- All mines reset after the plugin reloads to ensure everything works well!
 
 ## Dependencies
 - [FormAPI](https://github.com/jojoe77777/FormAPI) by jojoe77777
@@ -74,7 +72,7 @@ Be sure to give the appropriate permission to your admin:
 ---
 
 # Download
-[Download Latest Stable Release](https://poggit.pmmp.io/r/255507/MineCreator_dev-9.phar)
+[Download Latest Stable Release](https://poggit.pmmp.io/r/255517/MineCreator_dev-19.phar)
 
 # Support
 Found a bug or have a feature request? Open an issue or pull request
