@@ -74,7 +74,7 @@ Be sure to give the appropriate permission to your admin:
 ---
 
 # Download
-[Download Latest Stable Release](https://poggit.pmmp.io/r/255502/MineCreator_dev-4.phar)
+[Download Latest Stable Release](https://poggit.pmmp.io/r/255507/MineCreator_dev-9.phar)
 
 # Support
 Found a bug or have a feature request? Open an issue or pull request
