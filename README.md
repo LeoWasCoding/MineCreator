@@ -1,73 +1,79 @@
-# ⛏️ MineCreator – PocketMine-MP Mines Plugin
+# ⛏️ MineCreator
 
-MineCreator is a powerful and user-friendly PocketMine-MP plugin that allows server owners to create and manage custom mines with automatic reset functionality. Built with performance and ease-of-use in mind, AutoMine features intuitive forms, percentage-based block filling, and automatic region resets with warning messages.
+A user-friendly and performance-focused mine management plugin for PocketMine-MP servers.  
+Create, edit, and reset mines with region selection, percentage-based block filling, and automatic resets – all through an intuitive FormAPI interface!
 
----
+## Features
+- 📐 **Region Selection**: Select two positions by breaking blocks to define the mine area.
+- 📋 **GUI-Based Mine Setup**: Manage mines easily using interactive forms.
+- 🧱 **Block Fill by Percentage**: Fill mines using custom block weights (e.g., `stone 50%, coal_ore 30%`).
+- 🕒 **Auto-Reset Timer**: Automatically resets mines after a configurable delay.
+- ⚠️ **Reset Warnings**: Sends a reset warning to players 5 seconds before a mine resets.
+- 🔁 **Manual or Automatic Reset**: Reset mines manually or on a timer.
+- 🧼 **Empty Resets**: auto resets when a mine is empty.
+- 💾 **Persistent JSON Storage**: All mine data saved in a JSON file for easy backup and editing.
 
-## 🧩 Features
+## Commands
+| Command          | Description                          | Permission                   |
+|------------------|--------------------------------------|------------------------------|
+| `/mine`          | Opens the main mine command help     | `minecreator.command.mine`   |
+| `/mine position` | Select region by breaking 2 blocks   | `minecreator.command.mine`   |
+| `/mine create`   | Create a new mine using a form       | `minecreator.command.mine`   |
+| `/mine edit`     | Edit an existing mine                | `minecreator.command.mine`   |
+| `/mine delete`   | Delete a mine                        | `minecreator.command.mine`   |
+| `/mine reset`    | Manually reset a mine                | `minecreator.command.mine`   |
+| `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.mine`   |
 
-- 🟢 Interactive **FormAPI-based GUI** for all mine operations  
-- 📦 **Region Selection System** using two block break positions  
-- 🕒 **Auto-Reset Scheduler** with configurable delay  
-- 🧱 **Block Fill Logic** using percentage weights (e.g., stone 50%, coal 30%)  
-- 📢 **Pre-Reset Warnings** to alert players  
-- 🔁 **Manual or Automatic Reset** options  
-- 📁 **Persistent Configuration** using JSON  
-- 🧼 resets a mine if it is empty
+## How to Use
+1. Install **FormAPI** by [jojoe77777](https://github.com/jojoe77777/FormAPI) *(Required)*.
+2. Place the plugin `.phar` or folder into your `plugins/` directory.
+3. Start your server.
+4. Use `/mine position` and break 2 blocks to define a region.
+5. Use `/mine create` to open the setup form:
+   - **Mine Name**
+   - **Blocks & Percentages** (e.g., `stone,50,coal_ore,30,iron_ore,20`)
+   - **Auto-Reset Time** (in seconds)
 
----
+You can cancel or redo the region selection if you make a mistake before creating the mine.
 
-## 🧪 Requirements
+## Reset Warnings
+Players in the same world as the mine will receive a warning 5 seconds before it resets.  
+Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 
-- **FormAPI:** Required dependency  
-
----
-
-## 📥 Installation
-
-Coming Soon.....
-
----
-
-## 🚀 Commands & Usage
-
-### `/mine`
-- ➕ `create` Creating new mines
-- ✏️ `edit` Editing existing mines
-- ❌ `delete` Deleting mines
-- 🔁 `reset` Manually resetting mines
-
-### Creating a Mine
-1. Use `/mine` and select **position**.
-2. You'll be asked to break two blocks to define a region.
-3. After selecting region, You have the option to cancel the selected region to create a new one if you made a mistake/etc..
-4. Use `/mine create` to open the form
-5. Fill out the form:
-   - Mine name
-   - Blocks & percentages (e.g., `stone,50,coal_ore,30,iron_ore,20`)
-   - Auto-reset time (in seconds)
-
-### Reset Warnings
-Players in the world where the mine is in will receive a warning 5 seconds before reset.
-You can toggle it with /minewarn on/off
-
----
-
-## 📁 Configuration Structure
-
-Stored in `plugin_data/AutoMine/mines.json`:
-
-```json
-{
-  "mine_name": {
-    "world": "world",
-    "pos1": [100, 60, 100],
-    "pos2": [110, 65, 110],
-    "blocks": {
-      "stone": 50,
-      "coal_ore": 30,
-      "iron_ore": 20
-    },
-    "autoResetTime": 600
+## File Structure
+- `mines.json`: Stores all mines and their settings.
+  ```json
+  {
+    "mine_name": {
+      "world": "world",
+      "pos1": [100, 60, 100],
+      "pos2": [110, 65, 110],
+      "blocks": {
+        "stone": 50,
+        "coal_ore": 30,
+        "iron_ore": 20
+      },
+      "autoResetTime": 600
+    }
   }
-}
+  ```
+## Note
+- All mines reset after the plugin reloads to ensure everything works well!
+
+## Dependencies
+- [FormAPI](https://github.com/jojoe77777/FormAPI) by jojoe77777
+
+## Permissions
+Be sure to give the appropriate permission to your staff or players:
+- `minecreator.command.mine` – Full access to mine commands and forms
+- `minecreator.command.reload` - access to reload the plugin
+
+---
+
+# Download
+*Coming soon...*
+
+# Support
+Found a bug or have a feature request? Open an issue or pull request on the GitHub repository.
+
+---
