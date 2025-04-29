@@ -1,0 +1,31 @@
+name: MineCreator
+version: 1.0.0
+author: LeoWasCoding
+api: 5.0.0
+main: MineCreator\Main
+description: |
+  Create and manage automatically resetting mines by selecting regions and defining block distributions.
+
+commands:
+  mine:
+    description: Manage mines (help, list, position, create, edit, reset, delete, reload)
+    usage: "/mine <help|list|position|create|edit|reset|delete|reload> [name]"
+    permission: minecreator.command.mine
+
+  minewarn:
+    description: Toggle the 5-second mine reset warning on or off
+    usage: "/minewarn <on|off>"
+    permission: minecreator.command.minewarn
+
+permissions:
+  minecreator.command.mine:
+    description: Allows use of /mine commands
+    default: op
+
+  minecreator.command.minewarn:
+    description: Allows toggling of the mine reset warning
+    default: true
+
+  minecreator.command.reload:
+    description: Allows reloading of the MineCreator plugin
+    default: op
