@@ -18,7 +18,6 @@ use pocketmine\block\Air;
 use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
-use jojoe77777\FormAPI\FormAPI;
 
 class Main extends PluginBase implements Listener {
 
