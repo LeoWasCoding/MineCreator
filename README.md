@@ -71,7 +71,7 @@ Be sure to give the appropriate permission to your staff or players:
 ---
 
 # Download
-*Coming soon...*
+[Download Latest Stable Release](https://poggit.pmmp.io/r/255501/MineCreator_dev-3.phar)
 
 # Support
 Found a bug or have a feature request? Open an issue or pull request on the GitHub repository.
