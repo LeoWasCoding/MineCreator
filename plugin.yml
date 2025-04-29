@@ -3,6 +3,8 @@ version: 1.0.0
 author: LeoWasCoding
 api: 5.0.0
 main: MineCreator\Main
+depend:
+  - FormAPI
 description: |
   Create and manage automatically resetting mines by selecting regions and defining block distributions.
 
