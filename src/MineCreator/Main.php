@@ -144,6 +144,7 @@ class Main extends PluginBase implements Listener {
             // Proceed with other /mine subcommands
             switch ($sub) {
                 case "position":
+                    $name = $sender->getName();
                     $this->selectionMode[$sender->getName()] = true;
                     $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then break another for §bSecond§a pos.");
                     unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
