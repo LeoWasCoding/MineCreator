@@ -18,6 +18,7 @@ use pocketmine\block\Air;
 use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
+use jojoe77777\FormAPI\FormAPI;
 
 class Main extends PluginBase implements Listener {
 
@@ -28,7 +29,6 @@ class Main extends PluginBase implements Listener {
     /** @var array<string,Vector3> */
     private array $secondPosition = [];
     
-    private $lastResetTimes = [];
     private ?\jojoe77777\FormAPI\FormAPI $formapi = null;
     private Config $mines;
     /** @var array<string,bool> */
