@@ -23,7 +23,6 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 | `/mine edit`     | Edit an existing mine                | `minecreator.command.mine`   |
 | `/mine delete`   | Delete a mine                        | `minecreator.command.mine`   |
 | `/mine reset`    | Manually reset a mine                | `minecreator.command.mine`   |
-|------------------|--------------------------------------|------------------------------|
 | `/mine reload`    | Reloads the plugin                | `minecreator.command.reload`   |
 | `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.minewarn`   |
 
