@@ -19,10 +19,13 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 | `/mine`          | Opens the main mine command help     | `minecreator.command.mine`   |
 | `/mine position` | Select region by breaking 2 blocks   | `minecreator.command.mine`   |
 | `/mine create`   | Create a new mine using a form       | `minecreator.command.mine`   |
+| `/mine list`   | Shows a list of available mines       | `minecreator.command.mine`   |
 | `/mine edit`     | Edit an existing mine                | `minecreator.command.mine`   |
 | `/mine delete`   | Delete a mine                        | `minecreator.command.mine`   |
 | `/mine reset`    | Manually reset a mine                | `minecreator.command.mine`   |
-| `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.mine`   |
+| `/mine reload`    | Reloads the plugin                | `minecreator.command.reload`   |
+| `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.minewarn`   |
+
 
 ## How to Use
 1. Install **FormAPI** by [jojoe77777](https://github.com/jojoe77777/FormAPI) *(Required)*.
