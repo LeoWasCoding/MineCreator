@@ -147,7 +147,9 @@ class Main extends PluginBase implements Listener {
                     $name = $sender->getName();
                     $this->selectionMode[$sender->getName()] = true;
                     $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then break another for §bSecond§a pos.");
-                    unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
+                    if (isset($this->selectionMode[$name]) || isset($this->firstPosition[$name]) || isset($this->secondPosition[$name])) {
+                        unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
+                    }
                     break;
     
                 case "create":
