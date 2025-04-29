@@ -23,6 +23,7 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 | `/mine edit`     | Edit an existing mine                | `minecreator.command.mine`   |
 | `/mine delete`   | Delete a mine                        | `minecreator.command.mine`   |
 | `/mine reset`    | Manually reset a mine                | `minecreator.command.mine`   |
+|------------------|--------------------------------------|------------------------------|
 | `/mine reload`    | Reloads the plugin                | `minecreator.command.reload`   |
 | `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.minewarn`   |
 
@@ -66,8 +67,8 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 ## Dependencies
 - [FormAPI](https://github.com/jojoe77777/FormAPI) by jojoe77777
 
-## Permissions
-Be sure to give the appropriate permission to your staff or players:
+## Admin Permissions
+Be sure to give the appropriate permission to your admin:
 - `minecreator.command.mine` – Full access to mine commands and forms
 - `minecreator.command.reload` - access to reload the plugin
 
@@ -77,6 +78,6 @@ Be sure to give the appropriate permission to your staff or players:
 [Download Latest Stable Release](https://poggit.pmmp.io/r/255502/MineCreator_dev-4.phar)
 
 # Support
-Found a bug or have a feature request? Open an issue or pull request on the GitHub repository.
+Found a bug or have a feature request? Open an issue or pull request
 
 ---
