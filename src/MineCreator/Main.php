@@ -18,6 +18,7 @@ use pocketmine\block\Air;
 use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
+use pocketmine\scheduler\TaskHandler;
 
 class Main extends PluginBase implements Listener {
 
@@ -27,15 +28,17 @@ class Main extends PluginBase implements Listener {
     private array $firstPosition = [];
     /** @var array<string,Vector3> */
     private array $secondPosition = [];
-    
+
+    /** @var \jojoe77777\FormAPI\FormAPI|null */
     private ?\jojoe77777\FormAPI\FormAPI $formapi = null;
     private Config $mines;
     /** @var array<string,bool> */
-    public array $pendingEmptyResets = []; // made public
-
-    /** @var bool Whether to broadcast the 5s reset warning */
+    public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
-    /** Public accessor for anonymous Tasks */
+
+    /** @var TaskHandler[] */
+    private array $scheduledTasks = [];
+
     public function isWarnEnabled(): bool {
         return $this->warnEnabled;
     }
@@ -46,18 +49,14 @@ class Main extends PluginBase implements Listener {
         @mkdir($this->getDataFolder());
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
     
-        // Load FormAPI
         $this->formapi = $this->getServer()->getPluginManager()->getPlugin("FormAPI");
         if ($this->formapi === null) {
             $this->getLogger()->error("FormAPI (jojoe77777) not found — disabling.");
             $this->getServer()->getPluginManager()->disablePlugin($this);
             return;
         }
-    
-        // Load mines.json
+
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
-    
-        // Schedule periodic auto-resets for existing mines
         foreach ($this->mines->getAll() as $name => $data) {
             $interval = (int)($data["autoResetTime"] ?? 0);
             if ($interval > 0) {
@@ -72,16 +71,14 @@ class Main extends PluginBase implements Listener {
     }
 
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
-        // Only players in-game
         if (!$sender instanceof Player) {
             $sender->sendMessage("Use in-game!");
             return true;
         }
     
-        $name = $cmd->getName(); // e.g. "mine" or "minewarn"
+        $name = $cmd->getName(); 
         $sub  = isset($args[0]) ? strtolower($args[0]) : "";
     
-        // === /minewarn <on|off> ===
         if ($name === "minewarn") {
             if (!$sender->hasPermission("minecreator.command.minewarn")) {
                 $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cYou don't have permission to toggle mine warnings.");
@@ -99,10 +96,8 @@ class Main extends PluginBase implements Listener {
             );
             return true;
         }
-    
-        // === /mine <subcommand> ===
+
         if ($name === "mine") {
-            // Help menu when no args or '/mine help'
             if ($sub === "" || $sub === "help") {
                 $sender->sendMessage("§6§l===== §eMineCreator Help §6§l=====");
                 $sender->sendMessage("§e/mine help §7– Show this help menu.");
@@ -141,7 +136,6 @@ class Main extends PluginBase implements Listener {
                 return true;
             }
     
-            // Proceed with other /mine subcommands
             switch ($sub) {
                 case "position":
                     $name = $sender->getName();
@@ -231,8 +225,7 @@ class Main extends PluginBase implements Listener {
     
             return true;
         }
-    
-        // If for some reason neither /mine nor /minewarn
+
         return false;
     }
     
@@ -254,7 +247,7 @@ class Main extends PluginBase implements Listener {
             if (isset($this->selectionMode[$name]) || isset($this->firstPosition[$name]) || isset($this->secondPosition[$name])) {
                 unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
                 $player->sendMessage("§7[§l§dMine§r§7] §c>> §6Selection cancelled. You can start again.");
-                $event->cancel(); // prevent "cancel" from appearing in chat
+                $event->cancel(); 
             }
         }
     }
@@ -263,7 +256,6 @@ class Main extends PluginBase implements Listener {
         $p    = $event->getPlayer();
         $name = $p->getName();
     
-        // First position selection
         if (isset($this->selectionMode[$name]) && !isset($this->firstPosition[$name])) {
             $this->firstPosition[$name] = $event->getBlock()->getPosition();
             $p->sendMessage("§7[§l§dMine§r§7] §c>> §aFirst position set at " . $event->getBlock()->getPosition());
@@ -271,7 +263,6 @@ class Main extends PluginBase implements Listener {
             return;
         }
     
-        // Empty-region detection
         $pos       = $event->getBlock()->getPosition();
         $worldName = $pos->getWorld()->getFolderName();
         foreach ($this->mines->getAll() as $mineName => $data) {
@@ -283,11 +274,10 @@ class Main extends PluginBase implements Listener {
                     new class($this, $mineName) extends Task {
                         public function __construct(private Main $plugin, private string $mineName) {}
                         public function onRun(): void {
-                            // Only trigger once per empty region
+
                             if ($this->plugin->isRegionEmpty($this->mineName) && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
                                 $this->plugin->pendingEmptyResets[$this->mineName] = true;
-    
-                                // --- START: broadcast 5s warning if enabled ---
+
                                 if ($this->plugin->isWarnEnabled()) {
                                     $mineData = $this->plugin->getMineData($this->mineName);
                                     if ($mineData !== null) {
@@ -301,9 +291,7 @@ class Main extends PluginBase implements Listener {
                                         }
                                     }
                                 }
-                                // --- END: broadcast 5s warning ---
-    
-                                // schedule actual reset in 5 seconds
+
                                 $this->plugin->getScheduler()->scheduleDelayedTask(
                                     new class($this->plugin, $this->mineName) extends Task {
                                         public function __construct(private Main $plugin, private string $mineName) {}
@@ -331,7 +319,6 @@ class Main extends PluginBase implements Listener {
         $p    = $event->getPlayer();
         $name = $p->getName();
 
-        // Second position selection
         if(isset($this->selectionMode[$name], $this->firstPosition[$name]) && !isset($this->secondPosition[$name])){
             $this->secondPosition[$name] = $event->getBlock()->getPosition();
             unset($this->selectionMode[$name]);
@@ -342,28 +329,35 @@ class Main extends PluginBase implements Listener {
     }
 
     private function openCreateForm(Player $player): void {
-        $form = new CustomForm(function(Player $p, ?array $data){
-            if($data === null) return;
-            [$rawName, $rawBlocks, $rawTime] = $data;
+        $form = new CustomForm(function(Player $p, ?array $data) {
+            if ($data === null) {
+                return; 
+            }
     
-            $name      = strtolower(trim($rawName));  // Ensure the name is lowercase
+            [$rawName, $rawBlocks, $rawTime] = $data;
+            $mineName  = strtolower(trim($rawName));
             $blocks    = $this->parseBlocksInput($rawBlocks);
             $resetTime = max(0, (int)$rawTime);
+            $playerName = $p->getName();
     
-            if($name === "" || empty($blocks)){
+            if ($mineName === "" || empty($blocks)) {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
                 return;
             }
-    
-            // Check if a mine with the same name already exists
-            if($this->mines->exists($name)){
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cA mine with the name '$name' already exists. Please choose a different name.");
+            if ($this->mines->exists($mineName)) {
+                $p->sendMessage(
+                    "§7[§l§dMine§r§7] §c>> §cA mine named '$mineName' already exists. Please choose another."
+                );
+                return;
+            }
+            if (!isset($this->firstPosition[$playerName], $this->secondPosition[$playerName])) {
+                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cYou must select two positions first with /mine position!");
                 return;
             }
     
-            $p1 = $this->firstPosition[$p->getName()];
-            $p2 = $this->secondPosition[$p->getName()];
-            $this->mines->set($name, [
+            $p1 = $this->firstPosition[$playerName];
+            $p2 = $this->secondPosition[$playerName];
+            $this->mines->set($mineName, [
                 "world"         => $p->getWorld()->getFolderName(),
                 "pos1"          => [$p1->getX(), $p1->getY(), $p1->getZ()],
                 "pos2"          => [$p2->getX(), $p2->getY(), $p2->getZ()],
@@ -373,14 +367,17 @@ class Main extends PluginBase implements Listener {
             $this->mines->save();
     
             $this->fillArea($p->getWorld(), $p1, $p2, $blocks);
-            if($resetTime > 0){
-                $this->schedulePeriodicReset($name, $resetTime);
+            if ($resetTime > 0) {
+                $this->schedulePeriodicReset($mineName, $resetTime);
             }
     
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$name' created!");
-            if (isset($this->selectionMode[$name]) || isset($this->firstPosition[$name]) || isset($this->secondPosition[$name])) {
-                unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
-            }
+
+            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' created!");
+            unset(
+                $this->selectionMode[$playerName],
+                $this->firstPosition[$playerName],
+                $this->secondPosition[$playerName]
+            );
         });
     
         $form->setTitle("Create Mine");
@@ -390,6 +387,7 @@ class Main extends PluginBase implements Listener {
         $player->sendForm($form);
     }
     
+    
 
     private function openEditForm(Player $player, string $mineName): void {
         $data      = $this->mines->get($mineName);
@@ -397,32 +395,28 @@ class Main extends PluginBase implements Listener {
             fn($b, $pct) => "{$b},{$pct}%",
             array_keys($data["blocks"]), array_values($data["blocks"])
         ));
-        $time = (int) $data["autoResetTime"];
+        $time = (int)$data["autoResetTime"];
     
         $form = new CustomForm(function(Player $p, ?array $dataIn) use ($mineName, $data) {
             if ($dataIn === null) return;
     
-            // Expecting 3 inputs now: name, blocks, time
             [$newName, $rawBlocks, $rawTime] = $dataIn;
-    
-            $newName = trim((string)$newName);
-            $blocks = $this->parseBlocksInput($rawBlocks);
+            $newName   = strtolower(trim((string)$newName));
+            $blocks    = $this->parseBlocksInput($rawBlocks);
             $resetTime = max(0, (int)$rawTime);
     
             if ($newName === "" || empty($blocks)) {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
                 return;
             }
-    
-            // Check for duplicate name if changed
             if (strtolower($newName) !== strtolower($mineName) && $this->mines->exists($newName)) {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cA mine with the name '$newName' already exists!");
                 return;
             }
+            $this->cancelScheduledReset($mineName);
     
-            // Update mine data
             $newData = $data;
-            $newData["blocks"] = $blocks;
+            $newData["blocks"]        = $blocks;
             $newData["autoResetTime"] = $resetTime;
     
             if (strtolower($newName) !== strtolower($mineName)) {
@@ -430,18 +424,24 @@ class Main extends PluginBase implements Listener {
             }
             $this->mines->set($newName, $newData);
             $this->mines->save();
+            $this->mines->reload();
+    
+            if ($resetTime > 0) {
+                $this->schedulePeriodicReset($newName, $resetTime);
+            }
+    
+            $this->resetMineByName($newName);
     
             $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' updated to '$newName'!");
-            $this->getServer()->getPluginManager()->disablePlugin($this);
-            $this->getServer()->getPluginManager()->enablePlugin($this);
         });
     
         $form->setTitle("Edit Mine: $mineName");
-        $form->addInput("Mine Name", "e.g. stone_mine", $mineName);   // New field: editable name
+        $form->addInput("Mine Name", "e.g. stone_mine", $mineName);
         $form->addInput("Blocks", "e.g. stone,50,iron_ore,30", $blocksCsv);
-        $form->addInput("Auto-reset time (sec)", "e.g. 600", (string)$time);
+        $form->addInput("Auto‐reset time (sec)", "e.g. 600", (string)$time);
         $player->sendForm($form);
     }
+
     
 
     private function openMineListForm(Player $player, string $mode): void {
@@ -470,31 +470,39 @@ class Main extends PluginBase implements Listener {
     }
     
     private function deleteMine(Player $player, string $mineName): void {
-        if(!$this->mines->exists($mineName)){
+        if (!$this->mines->exists($mineName)) {
             $player->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' does not exist.");
             return;
         }
-    
+        $this->cancelScheduledReset($mineName);
+
         $this->mines->remove($mineName);
         $this->mines->save();
         unset($this->pendingEmptyResets[$mineName]);
+
         $player->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' deleted successfully.");
-        $this->getServer()->getPluginManager()->disablePlugin($this);
-        $this->getServer()->getPluginManager()->enablePlugin($this);
+    }
+
+    private function cancelScheduledReset(string $name): void {
+        if (isset($this->scheduledTasks[$name])) {
+            $this->scheduledTasks[$name]->cancel();
+            unset($this->scheduledTasks[$name]);
+        }
     }
     
 
     private function schedulePeriodicReset(string $name, int $intervalSec): void {
-        $this->getScheduler()->scheduleRepeatingTask(
+        $handler = $this->getScheduler()->scheduleRepeatingTask(
             new class($this, $name, $intervalSec) extends Task {
                 public function __construct(private Main $plugin, private string $mineName, private int $intervalSec) {}
-    
+
                 public function onRun(): void {
-                    // Send 5-second warning
                     if ($this->plugin->isWarnEnabled()) {
                         $mineData = $this->plugin->getMineData($this->mineName);
                         if ($mineData !== null) {
-                            $world = $this->plugin->getServer()->getWorldManager()->getWorldByName($mineData["world"]);
+                            $world = $this->plugin->getServer()
+                                ->getWorldManager()
+                                ->getWorldByName($mineData["world"]);
                             if ($world instanceof World) {
                                 foreach ($world->getPlayers() as $player) {
                                     $player->sendMessage("§7[§l§dMine§r§7] §c>> §6Mine '{$this->mineName}' will reset in 5 seconds!");
@@ -502,12 +510,9 @@ class Main extends PluginBase implements Listener {
                             }
                         }
                     }
-    
-                    // Schedule actual reset after 5 seconds
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
                             public function __construct(private Main $plugin, private string $mineName) {}
-    
                             public function onRun(): void {
                                 $this->plugin->resetMineByName($this->mineName);
                             }
@@ -518,9 +523,9 @@ class Main extends PluginBase implements Listener {
             },
             $intervalSec * 20
         );
+
+        $this->scheduledTasks[$name] = $handler;
     }
-    
-    
 
     public function resetMineByName(string $name): void {
         $data = $this->mines->get($name);
@@ -536,7 +541,6 @@ class Main extends PluginBase implements Listener {
         $p2   = new Vector3(...$data["pos2"]);
         $topY = max($p1->getY(), $p2->getY()) + 1;
     
-        // Teleport any players inside up above, and notify them individually
         foreach ($world->getPlayers() as $player) {
             $pos = $player->getPosition();
             if ($this->isInside($pos, $p1, $p2)) {
@@ -545,7 +549,6 @@ class Main extends PluginBase implements Listener {
             }
         }
     
-        // Broadcast the reset confirmation only if warnings are enabled
         if ($this->warnEnabled) {
             foreach ($world->getPlayers() as $player) {
                 $player->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '{$name}' has been reset!");
