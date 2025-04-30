@@ -3,13 +3,15 @@ version: 1.0.0
 author: LeoWasCoding
 api: 5.0.0
 main: MineCreator\Main
+depend:
+  - FormAPI
 description: |
   Create and manage automatically resetting mines by selecting regions and defining block distributions.
 
 commands:
   mine:
-    description: Manage mines (help, list, position, create, edit, reset, delete, reload)
-    usage: "/mine <help|list|position|create|edit|reset|delete|reload> [name]"
+    description: Manage mines (help, list, position, create, edit, reset, delete, reload, setblockxp)
+    usage: "/mine <help|list|position|create|edit|reset|delete|reload|setblockxp> [name]"
     permission: minecreator.command.mine
 
   minewarn:
