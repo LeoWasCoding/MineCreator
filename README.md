@@ -89,7 +89,7 @@ Be sure to give the appropriate permission to your admin:
 ---
 
 # Download
-[Download Latest Stable Release](https://poggit.pmmp.io/r/255517/MineCreator_dev-19.phar)
+[Download Latest Stable Release](https://poggit.pmmp.io/r/255557/MineCreator_dev-27.phar)
 
 # Support
 Found a bug or have a feature request? Open an issue or pull request
