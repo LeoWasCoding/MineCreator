@@ -1,7 +1,9 @@
+---
+
 # ⛏️ MineCreator
 
 A user-friendly and performance-focused mine management plugin for PocketMine-MP servers.  
-Create, edit, and reset mines with region selection, percentage-based block filling, and automatic resets – all through an intuitive FormAPI interface!
+Create, edit, and reset mines with region selection, percentage-based block filling, XP control, and automatic resets – all through an intuitive FormAPI interface!
 
 ## Features
 - 📐 **Region Selection**: Select two positions by breaking blocks to define the mine area.
@@ -10,22 +12,24 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 - 🕒 **Auto-Reset Timer**: Automatically resets mines after a configurable delay.
 - ⚠️ **Reset Warnings**: Sends a reset warning to players 5 seconds before a mine resets.
 - 🔁 **Manual or Automatic Reset**: Reset mines manually or on a timer.
-- 🧼 **Empty Resets**: auto resets when a mine is empty.
+- 🧼 **Empty Resets**: Auto resets when a mine is empty.
 - 💾 **Persistent JSON Storage**: All mine data saved in a JSON file for easy backup and editing.
+- 💥 **Block-Based XP System**: Assign custom XP values per block using a simple command.
+- 🚫 **XP Drop Prevention**: All XP orb drops from a specific blocks/mines which has a custom value are canceled to avoid dupes. (this only applies inside mines)
 
 ## Commands
-| Command          | Description                          | Permission                   |
-|------------------|--------------------------------------|------------------------------|
-| `/mine`          | Opens the main mine command help     | `minecreator.command.mine`   |
-| `/mine position` | Select region by breaking 2 blocks   | `minecreator.command.mine`   |
-| `/mine create`   | Create a new mine using a form       | `minecreator.command.mine`   |
-| `/mine list`   | Shows a list of available mines       | `minecreator.command.mine`   |
-| `/mine edit`     | Edit an existing mine                | `minecreator.command.mine`   |
-| `/mine delete`   | Delete a mine                        | `minecreator.command.mine`   |
-| `/mine reset`    | Manually reset a mine                | `minecreator.command.mine`   |
-| `/mine reload`    | Reloads the plugin                | `minecreator.command.reload`   |
-| `/minewarn`      | Toggle reset warnings on/off         | `minecreator.command.minewarn`   |
-
+| Command               | Description                          | Permission                       |
+|-----------------------|--------------------------------------|----------------------------------|
+| `/mine`               | Opens the main mine command help     | `minecreator.command.mine`       |
+| `/mine position`      | Select region by breaking 2 blocks   | `minecreator.command.mine`       |
+| `/mine create`        | Create a new mine using a form       | `minecreator.command.mine`       |
+| `/mine list`          | Shows a list of available mines      | `minecreator.command.mine`       |
+| `/mine edit`          | Edit an existing mine                | `minecreator.command.mine`       |
+| `/mine delete`        | Delete a mine                        | `minecreator.command.mine`       |
+| `/mine reset`         | Manually reset a mine                | `minecreator.command.mine`       |
+| `/mine reload`        | Reloads the plugin                   | `minecreator.command.reload`     |
+| `/mine setblockxp`    | Set shard XP for specific block in a mine | `minecreator.command.mine`   |
+| `/minewarn`           | Toggle reset warnings on/off         | `minecreator.command.minewarn`   |
 
 ## How to Use
 1. Install **FormAPI** by [jojoe77777](https://github.com/jojoe77777/FormAPI) *(Required)*.
@@ -36,12 +40,21 @@ Create, edit, and reset mines with region selection, percentage-based block fill
    - **Mine Name**
    - **Blocks & Percentages** (e.g., `stone,50,coal_ore,30,iron_ore,20`)
    - **Auto-Reset Time** (in seconds)
+6. Assign XP to specific blocks:
+   ```
+   /mine setblockxp <mine> <block_id> <xp>
+   ```
+   Example: `/mine setblockxp mine1 iron_ore 10`
 
-You can cancel or redo the region selection if you make a mistake before creating the mine.
+> You can cancel or redo the region selection if you make a mistake before creating the mine.
 
 ## Reset Warnings
 Players in the same world as the mine will receive a warning 5 seconds before it resets.  
 Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
+
+## XP Drop Handling (Ty .n00bs. for the idea)
+- **XP orbs are disabled** when breaking mine-assigned blocks to avoid XP farming.
+- XP from blocks is now custom-defined. You can set XP for any blocks, even blocks which doesn't drop XP.
 
 ## File Structure
 - `mines.json`: Stores all mines and their settings.
@@ -56,6 +69,10 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
         "coal_ore": 30,
         "iron_ore": 20
       },
+      "blockXp": {
+        "iron_ore": 10,
+        "coal_ore": 5
+      },
       "autoResetTime": 600
     }
   }
@@ -67,7 +84,7 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 ## Admin Permissions
 Be sure to give the appropriate permission to your admin:
 - `minecreator.command.mine` – Full access to mine commands and forms
-- `minecreator.command.reload` - access to reload the plugin
+- `minecreator.command.reload` – Access to reload the plugin
 
 ---
 
