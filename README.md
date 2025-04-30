@@ -53,7 +53,7 @@ Players in the same world as the mine will receive a warning 5 seconds before it
 Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 
 ## XP Drop Handling (Ty .n00bs. for the idea)
-- **XP orbs are disabled** when breaking mine-assigned blocks to avoid XP farming.
+- **XP orbs are disabled** when breaking __mine-assigned__ blocks to avoid XP from being stolen.
 - XP from blocks is now custom-defined. You can set XP for any blocks, even blocks which doesn't drop XP.
 
 ## File Structure
@@ -89,7 +89,7 @@ Be sure to give the appropriate permission to your admin:
 ---
 
 # Download
-[Download Latest Stable Release](https://poggit.pmmp.io/r/255557/MineCreator_dev-27.phar)
+[Download Latest Stable Release](https://poggit.pmmp.io/r/255559/MineCreator_dev-30.phar)
 
 # Support
 Found a bug or have a feature request? Open an issue or pull request
