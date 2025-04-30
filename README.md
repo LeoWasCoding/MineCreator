@@ -1,6 +1,6 @@
 ---
 
-# ⛏️ MineCreator
+# ⛏️ MineCreator 1.1.0
 
 A user-friendly and performance-focused mine management plugin for PocketMine-MP servers.  
 Create, edit, and reset mines with region selection, percentage-based block filling, XP control, and automatic resets – all through an intuitive FormAPI interface!
