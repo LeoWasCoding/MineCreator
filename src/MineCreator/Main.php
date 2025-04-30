@@ -129,6 +129,10 @@ class Main extends PluginBase implements Listener {
                 $sender->sendMessage("§e/mine delete <name> §7– Permanently delete a mine.");
                 $sender->sendMessage("   §8Removes it from config and cancels auto-resets.");
                 $sender->sendMessage("");
+
+                $sender->sendMessage("§e/mine setblockxp <mine> <block> <xp> §7– Set XP drop for a specific block in a mine.");
+                $sender->sendMessage("   §8Updates the mine’s config and applies immediately.");
+                $sender->sendMessage("");
     
                 $sender->sendMessage("§e/mine reload §7– Reload this plugin.");
                 $sender->sendMessage("   §8Disables and re-enables MineCreator, reloading all settings.");
@@ -136,6 +140,37 @@ class Main extends PluginBase implements Listener {
                 return true;
             }
     
+            if ($sub === 'setblockxp') {
+                if (count($args) !== 4) {
+                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §eUsage: §b/mine setblockxp <mine> <block> <xp>");
+                    return true;
+                }
+                [$_, $mineName, $blockInput, $xpRaw] = $args;
+                $mineName = strtolower($mineName);
+                // parse block name via parser
+                $item = StringToItemParser::getInstance()->parse(strtolower($blockInput));
+                if ($item === null || $item->isNull()) {
+                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cUnknown block: $blockInput");
+                    return true;
+                }
+                // get alias key
+                $aliases = StringToItemParser::getInstance()->lookupBlockAliases($item->getBlock());
+                $alias   = strtolower(ltrim(array_shift($aliases), 'minecraft:'));
+                $xp      = max(0, (int)$xpRaw);
+                if (!$this->mines->exists($mineName)) {
+                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' not found!");
+                    return true;
+                }
+                $data = $this->mines->get($mineName);
+                $xpMap = $data['blockXp'] ?? [];
+                $xpMap[$alias] = $xp;
+                $data['blockXp'] = $xpMap;
+                $this->mines->set($mineName, $data);
+                $this->mines->save();
+                $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aSet XP of $xp for block '$alias' in mine '$mineName'.");
+                return true;
+            }
+
             switch ($sub) {
                 case "position":
                     $name = $sender->getName();
@@ -253,68 +288,89 @@ class Main extends PluginBase implements Listener {
     }
 
     public function onBlockBreak(BlockBreakEvent $event): void {
-        $p    = $event->getPlayer();
-        $name = $p->getName();
+        $player     = $event->getPlayer();
+        $playerName = $player->getName();
     
-        if (isset($this->selectionMode[$name]) && !isset($this->firstPosition[$name])) {
-            $this->firstPosition[$name] = $event->getBlock()->getPosition();
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aFirst position set at " . $event->getBlock()->getPosition());
+        // ── Region-selection logic ──
+        if (isset($this->selectionMode[$playerName]) && !isset($this->firstPosition[$playerName])) {
+            $this->firstPosition[$playerName] = $event->getBlock()->getPosition();
+            $player->sendMessage("§7[§l§dMine§r§7] §c>> §aFirst position set at {$event->getBlock()->getPosition()}");
             $event->cancel();
             return;
         }
     
-        $pos       = $event->getBlock()->getPosition();
+        $block     = $event->getBlock();
+        $pos       = $block->getPosition();
         $worldName = $pos->getWorld()->getFolderName();
+    
         foreach ($this->mines->getAll() as $mineName => $data) {
+            if (!isset($data["world"], $data["pos1"], $data["pos2"])) continue;
             if ($worldName !== $data["world"]) continue;
+    
             $p1 = new Vector3(...$data["pos1"]);
             $p2 = new Vector3(...$data["pos2"]);
-            if ($this->isInside($pos, $p1, $p2)) {
-                $this->getScheduler()->scheduleDelayedTask(
-                    new class($this, $mineName) extends Task {
-                        public function __construct(private Main $plugin, private string $mineName) {}
-                        public function onRun(): void {
-
-                            if ($this->plugin->isRegionEmpty($this->mineName) && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
-                                $this->plugin->pendingEmptyResets[$this->mineName] = true;
-
-                                if ($this->plugin->isWarnEnabled()) {
-                                    $mineData = $this->plugin->getMineData($this->mineName);
-                                    if ($mineData !== null) {
-                                        $world = $this->plugin->getServer()
-                                            ->getWorldManager()
-                                            ->getWorldByName($mineData["world"]);
-                                        if ($world instanceof World) {
-                                            foreach ($world->getPlayers() as $player) {
-                                                $player->sendMessage("§7[§l§dMine§r§7] §c>> §6Mine '{$this->mineName}' will reset in 5 seconds!");
-                                            }
+            if (!$this->isInside($pos, $p1, $p2)) continue;
+    
+            // — Award per-block XP if configured ——
+            $xpMap   = $data["blockXp"] ?? [];
+            $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
+            foreach ($aliases as $alias) {
+                $key = strtolower(ltrim($alias, "minecraft:"));
+                if (isset($xpMap[$key])) {
+                    // Give custom XP
+                    $player->getXpManager()->addXp((int)$xpMap[$key]);
+                    // Cancel the vanilla XP drop
+                    $event->setXpDropAmount(0);
+                    break;
+                }
+            }
+    
+            // — Existing reset-scheduling logic ——
+            $this->getScheduler()->scheduleDelayedTask(
+                new class($this, $mineName) extends Task {
+                    public function __construct(private Main $plugin, private string $mineName) {}
+                    public function onRun(): void {
+                        if ($this->plugin->isRegionEmpty($this->mineName)
+                            && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
+                            $this->plugin->pendingEmptyResets[$this->mineName] = true;
+    
+                            if ($this->plugin->isWarnEnabled()) {
+                                $mineData = $this->plugin->getMineData($this->mineName);
+                                if ($mineData !== null) {
+                                    $world = $this->plugin->getServer()
+                                        ->getWorldManager()
+                                        ->getWorldByName($mineData["world"]);
+                                    if ($world instanceof World) {
+                                        foreach ($world->getPlayers() as $pl) {
+                                            $pl->sendMessage(
+                                                "§7[§l§dMine§r§7] §c>> §6Mine '{$this->mineName}' will reset in 5 seconds!"
+                                            );
                                         }
                                     }
                                 }
-
-                                $this->plugin->getScheduler()->scheduleDelayedTask(
-                                    new class($this->plugin, $this->mineName) extends Task {
-                                        public function __construct(private Main $plugin, private string $mineName) {}
-                                        public function onRun(): void {
-                                            $this->plugin->resetMineByName($this->mineName);
-                                            $this->plugin->pendingEmptyResets[$this->mineName] = false;
-                                        }
-                                    },
-                                    5 * 20
-                                );
                             }
+    
+                            $this->plugin->getScheduler()->scheduleDelayedTask(
+                                new class($this->plugin, $this->mineName) extends Task {
+                                    public function __construct(private Main $plugin, private string $mineName) {}
+                                    public function onRun(): void {
+                                        $this->plugin->resetMineByName($this->mineName);
+                                        $this->plugin->pendingEmptyResets[$this->mineName] = false;
+                                    }
+                                },
+                                5 * 20
+                            );
                         }
-                    },
-                    1
-                );
-                break;
-            }
+                    }
+                },
+                1
+            );
+    
+            break;
         }
     }
     
     
-    
-
     public function onPlayerInteract(BlockBreakEvent $event): void {
         $p    = $event->getPlayer();
         $name = $p->getName();
@@ -362,7 +418,8 @@ class Main extends PluginBase implements Listener {
                 "pos1"          => [$p1->getX(), $p1->getY(), $p1->getZ()],
                 "pos2"          => [$p2->getX(), $p2->getY(), $p2->getZ()],
                 "blocks"        => $blocks,
-                "autoResetTime" => $resetTime
+                "autoResetTime" => $resetTime,
+                "blockXp"       => []
             ]);
             $this->mines->save();
     
