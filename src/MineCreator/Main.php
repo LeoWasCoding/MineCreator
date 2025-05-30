@@ -383,18 +383,18 @@ class Main extends PluginBase implements Listener {
                         // ── COMMAND EXECUTION ──
                         if (
                             isset($luckyData["min_cmd_count"], $luckyData["max_cmd_count"]) &&
+                            isset($luckyData["commands"]) &&
                             is_array($luckyData["commands"]) &&
                             !empty($luckyData["commands"])
                         ) {
                             $cmdMap = [];
-
+                        
+                            // Support both formats: [cmd => chance] and [[cmd => chance], ...]
                             if (is_string(array_key_first($luckyData["commands"]))) {
-                                // Format: command => chance
                                 foreach ($luckyData["commands"] as $cmd => $chance) {
                                     $cmdMap[$cmd] = (int)$chance;
                                 }
                             } else {
-                                // Format: list of maps
                                 foreach ($luckyData["commands"] as $entry) {
                                     if (is_array($entry)) {
                                         foreach ($entry as $cmd => $chance) {
@@ -403,7 +403,7 @@ class Main extends PluginBase implements Listener {
                                     }
                                 }
                             }
-
+                        
                             $totalWeight = array_sum($cmdMap);
                             if ($totalWeight > 0) {
                                 $cmdCount = mt_rand((int)$luckyData["min_cmd_count"], (int)$luckyData["max_cmd_count"]);
@@ -411,6 +411,7 @@ class Main extends PluginBase implements Listener {
                                     $r = mt_rand(1, $totalWeight);
                                     $acc = 0;
                                     $selected = null;
+                        
                                     foreach ($cmdMap as $cmd => $weight) {
                                         $acc += $weight;
                                         if ($r <= $acc) {
@@ -418,10 +419,11 @@ class Main extends PluginBase implements Listener {
                                             break;
                                         }
                                     }
-
+                        
                                     if ($selected !== null) {
                                         $command = str_replace("{player}", $player->getName(), $selected);
-                                        $this->getServer()->dispatchCommand(new \pocketmine\command\ConsoleCommandSender(), $command);
+                                        $consoleSender = $this->getServer()->getCommandMap()->getConsoleSender();
+                                        $this->getServer()->dispatchCommand($consoleSender, $command);
                                     }
                                 }
                             } else {
