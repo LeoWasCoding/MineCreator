@@ -4,7 +4,7 @@
 
 A user-friendly and performance-focused mine management plugin for PocketMine-MP servers.
 Create, edit, and reset mines with region selection, percentage-based block filling, XP control, automatic resets, and a new Lucky Block feature — all through an intuitive FormAPI interface!
-
+---
 ## Features
 
 * 📐 **Region Selection**: Select two positions by breaking blocks to define the mine area.
@@ -19,7 +19,7 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 * 🍀 **Lucky Blocks**: Spawn special Lucky Blocks that trigger random drops, particle effects, and sounds when broken.
 * 🎆 **Visual and Sound Effects**: Particle and sound effects during Lucky Block activation and mine resets.
 * ⚙️ **Configurable Lucky Block Settings**: Define Lucky Block item, drops, particles, sounds, and cooldowns via `luckyblock.yml`.
-
+---
 ## Commands
 
 | Command            | Description                           | Permission                     |
@@ -34,7 +34,7 @@ Create, edit, and reset mines with region selection, percentage-based block fill
 | `/mine reload`     | Reloads the plugin                    | `minecreator.command.reload`   |
 | `/mine setblockxp` | Set XP for a specific block in a mine | `minecreator.command.mine`     |
 | `/minewarn`        | Toggle reset warnings on/off          | `minecreator.command.minewarn` |
-
+---
 ## How to Use
 
 1. Place the plugin `.phar` or folder into your `plugins/` directory.
