@@ -72,12 +72,15 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 * Define possible drops with custom chances and quantities.
 * Configure particle and sound effects for Lucky Block activation.
 
+### Configuration (`luckyblock.yml`)
+
 ```yaml
-# Enable or disable the lucky blocks feature globally. (do not set it to false if you use it on any mines, otherwise they would become air.)
+# Enable or disable the lucky blocks feature globally.
+# (Do not disable if you use lucky blocks in any mines, or they will become air.)
 lucky_blocks_enabled: true
 
 # List of active lucky block types on the server.
-# Only these block types will trigger lucky block effects when broken.
+# Only these block types trigger lucky block effects when broken.
 lucky_block_types:
   - gold_lucky_block
   - diamond_lucky_block
@@ -117,6 +120,16 @@ diamond_lucky_block:
     particles: true
     sound: true
 ```
+
+### Notes
+
+* Lucky blocks only work if `lucky_blocks_enabled` is `true`.
+* Only the block types listed under `lucky_block_types` will trigger lucky block effects.
+* You can configure multiple lucky block types with their own drop lists, commands, and effects.
+* Commands can include placeholders such as `{player}`, which will be replaced with the player’s name who broke the lucky block.
+* Effects like particles and sounds can be toggled for each lucky block type.
+
+---
 
 ## File Structure
 
