@@ -3,6 +3,7 @@
 namespace MineCreator;
 
 use pocketmine\plugin\PluginBase;
+use pocketmine\block\VanillaBlocks;
 use pocketmine\player\Player;
 use pocketmine\event\player\PlayerChatEvent;
 use pocketmine\event\Listener;
@@ -19,6 +20,11 @@ use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
 use pocketmine\scheduler\TaskHandler;
+use pocketmine\world\sound\Sound;
+use pocketmine\color\Color;
+use pocketmine\world\particle\Particle;
+use pocketmine\world\particle\DustParticle;
+use pocketmine\world\sound\XpLevelUpSound;
 
 class Main extends PluginBase implements Listener {
 
@@ -29,50 +35,35 @@ class Main extends PluginBase implements Listener {
     /** @var array<string,Vector3> */
     private array $secondPosition = [];
     
-    private ?Config $mines = null;
+    private Config $mines;
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
-
+    
+    /** @phpstan-ignore-next-line */
     /** @var TaskHandler[] */
     private array $scheduledTasks = [];
 
-    private Config $luckyBlocks;
+    private Config $luckyBlocksConfig;
+
+    private LuckyBlockManager $luckyBlockManager;
 
     public function isWarnEnabled(): bool {
         return $this->warnEnabled;
     }
 
+    public function getLuckyBlockManager(): LuckyBlockManager {
+        return $this->luckyBlockManager;
+    }
+    
+
     public function onEnable(): void {
         @mkdir($this->getDataFolder());
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
-    
-        // Load mines config
+        $this->saveResource("luckyblock.yml");
+        $this->luckyBlocksConfig = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
+        $this->luckyBlockManager = new LuckyBlockManager($this->getDataFolder());
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
-    
-        // Load lucky blocks config (YAML)
-        $this->luckyBlocks = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
-    
-        // Provide defaults if config is empty or missing expected keys
-        if (!$this->luckyBlocks->exists("lucky_blocks") || empty($this->luckyBlocks->get("lucky_blocks"))) {
-            $this->luckyBlocks->set("lucky_blocks", [
-                "default" => [
-                    "spawn_chance" => 5,
-                    "block" => "minecraft:gold_block"
-                ],
-                "rare" => [
-                    "spawn_chance" => 2,
-                    "block" => "minecraft:diamond_block"
-                ],
-                "epic" => [
-                    "spawn_chance" => 1,
-                    "block" => "minecraft:emerald_block"
-                ]
-            ]);
-            $this->luckyBlocks->save();
-        }
-    
-        // Schedule periodic resets for mines with intervals
+        $this->getServer()->getPluginManager()->registerEvents($this, $this);
         foreach ($this->mines->getAll() as $name => $data) {
             $interval = (int)($data["autoResetTime"] ?? 0);
             if ($interval > 0) {
@@ -80,30 +71,10 @@ class Main extends PluginBase implements Listener {
             }
         }
     }
-
-    /**
-     * Get all lucky block types and their config data
-     * @return array<string, array>  e.g. ['lucky_glazed' => ['block' => ..., 'spawn_chance' => ..., 'drops' => [...]], ...]
-     */
-    public function getAllLuckyBlocks(): array {
-        return $this->luckyBlocks->get("lucky_blocks", []);
-    }
-
-    /**
-     * Get a single lucky block config by its key
-     * @param string $key
-     * @return array|null
-     */
-    public function getLuckyBlock(string $key): ?array {
-        $blocks = $this->getAllLuckyBlocks();
-        return $blocks[$key] ?? null;
-    }
     
 
     public function onDisable(): void {
-        if ($this->mines !== null) {
-            $this->mines->save();
-        }
+        $this->mines->save();
     }
 
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
@@ -326,7 +297,7 @@ class Main extends PluginBase implements Listener {
     public function onBlockBreak(BlockBreakEvent $event): void {
         $player     = $event->getPlayer();
         $playerName = $player->getName();
-    
+
         // ── Region-selection logic ──
         if (isset($this->selectionMode[$playerName]) && !isset($this->firstPosition[$playerName])) {
             $this->firstPosition[$playerName] = $event->getBlock()->getPosition();
@@ -334,34 +305,162 @@ class Main extends PluginBase implements Listener {
             $event->cancel();
             return;
         }
-    
-        $block     = $event->getBlock();
-        $pos       = $block->getPosition();
-        $worldName = $pos->getWorld()->getFolderName();
-    
+
+        $block = $event->getBlock();
+        $pos   = $block->getPosition();
+        $world = $pos->getWorld();
+        $worldName = $world->getFolderName();
+
         foreach ($this->mines->getAll() as $mineName => $data) {
             if (!isset($data["world"], $data["pos1"], $data["pos2"])) continue;
             if ($worldName !== $data["world"]) continue;
-    
+
             $p1 = new Vector3(...$data["pos1"]);
             $p2 = new Vector3(...$data["pos2"]);
             if (!$this->isInside($pos, $p1, $p2)) continue;
-    
-            // — Award per-block XP if configured ——
+
+            // ── LUCKY BLOCK DETECTION ──
+            if (($data["lucky_blocks_enabled"] ?? false) && isset($data["lucky_block_types"])) {
+                foreach ($data["lucky_block_types"] as $luckyName) {
+                    $luckyData = $this->luckyBlockManager->get($luckyName);
+                    if (!is_array($luckyData) || !isset($luckyData["block_id"])) continue;
+
+                    $luckyItem = StringToItemParser::getInstance()->parse($luckyData["block_id"]);
+                    if ($luckyItem === null) continue;
+
+                    if ($block->getTypeId() === $luckyItem->getBlock()->getTypeId()) {
+                        // -- DEBUG: lucky block detected
+                        $player->sendMessage("§a[LuckyBlock] Detected break of '{$luckyName}' block.");
+                        $event->setDrops([]);
+
+                        // Build flat chance map
+                        $flat = [];
+                        if (!empty($luckyData["drop_list"])) {
+                            if (is_string(array_key_first($luckyData["drop_list"]))) {
+                                foreach ($luckyData["drop_list"] as $itemKey => $chance) {
+                                    $flat[$itemKey] = (int)$chance;
+                                }
+                            } else {
+                                foreach ($luckyData["drop_list"] as $entry) {
+                                    foreach ($entry as $itemKey => $chance) {
+                                        $flat[$itemKey] = (int)$chance;
+                                    }
+                                }
+                            }
+                        }
+
+                        $total = array_sum($flat);
+                        if ($total < 1) {
+                            $player->sendMessage("§c[LuckyBlock] total weight is zero, no drops will occur. Report to an admin!");
+                            return;
+                        }
+
+                        $count = mt_rand((int)$luckyData["min_drop_count"], (int)$luckyData["max_drop_count"]);
+                        for ($i = 0; $i < $count; $i++) {
+                            $r = mt_rand(1, $total);
+                            $acc = 0;
+                            $chosen = null;
+                            foreach ($flat as $itemKey => $w) {
+                                $acc += $w;
+                                if ($r <= $acc) {
+                                    $chosen = $itemKey;
+                                    break;
+                                }
+                            }
+                            if ($chosen === null) {
+                                $player->sendMessage("§c[LuckyBlock] no item selected (unexpected). Report to an admin!");
+                                continue;
+                            }
+                            $dropItem = StringToItemParser::getInstance()->parse($chosen);
+                            if ($dropItem !== null) {
+                                $world->dropItem($pos, $dropItem);
+                            } else {
+                                $player->sendMessage("§c[LuckyBlock] failed to parse item '$chosen'. Report to an admin!");
+                            }
+                        }
+
+                        // ── COMMAND EXECUTION ──
+                        if (
+                            isset($luckyData["min_cmd_count"], $luckyData["max_cmd_count"]) &&
+                            is_array($luckyData["commands"]) &&
+                            !empty($luckyData["commands"])
+                        ) {
+                            $cmdMap = [];
+
+                            if (is_string(array_key_first($luckyData["commands"]))) {
+                                // Format: command => chance
+                                foreach ($luckyData["commands"] as $cmd => $chance) {
+                                    $cmdMap[$cmd] = (int)$chance;
+                                }
+                            } else {
+                                // Format: list of maps
+                                foreach ($luckyData["commands"] as $entry) {
+                                    if (is_array($entry)) {
+                                        foreach ($entry as $cmd => $chance) {
+                                            $cmdMap[$cmd] = (int)$chance;
+                                        }
+                                    }
+                                }
+                            }
+
+                            $totalWeight = array_sum($cmdMap);
+                            if ($totalWeight > 0) {
+                                $cmdCount = mt_rand((int)$luckyData["min_cmd_count"], (int)$luckyData["max_cmd_count"]);
+                                for ($i = 0; $i < $cmdCount; $i++) {
+                                    $r = mt_rand(1, $totalWeight);
+                                    $acc = 0;
+                                    $selected = null;
+                                    foreach ($cmdMap as $cmd => $weight) {
+                                        $acc += $weight;
+                                        if ($r <= $acc) {
+                                            $selected = $cmd;
+                                            break;
+                                        }
+                                    }
+
+                                    if ($selected !== null) {
+                                        $command = str_replace("{player}", $player->getName(), $selected);
+                                        $this->getServer()->dispatchCommand(new \pocketmine\command\ConsoleCommandSender(), $command);
+                                    }
+                                }
+                            } else {
+                                $player->sendMessage("§c[LuckyBlock] Command weights add up to 0. Skipping commands.");
+                            }
+                        } elseif (!is_array($luckyData["commands"])) {
+                            $player->sendMessage("§c[LuckyBlock] Invalid 'commands' format in luckyblock.yml. Must be an array.");
+                        }
+
+                        // effects
+                        if (!empty($luckyData["effects"]["particles"])) {
+                            $color = new Color(255, 255, 0); // Yellow
+                            for ($i = 0; $i < 12; $i++) {
+                                $dx = mt_rand(-50, 50) / 100;
+                                $dy = mt_rand(-50, 50) / 100;
+                                $dz = mt_rand(-50, 50) / 100;
+                                $spawnPos = $pos->add($dx, $dy + 0.5, $dz);
+                                $world->addParticle($spawnPos, new DustParticle($color));
+                            }
+                        }
+                        if (!empty($luckyData["effects"]["sound"])) {
+                            $world->addSound($pos, new XpLevelUpSound(5));
+                        }
+
+                        return;
+                    }
+                }
+            }
+
             $xpMap   = $data["blockXp"] ?? [];
             $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
             foreach ($aliases as $alias) {
                 $key = strtolower(ltrim($alias, "minecraft:"));
                 if (isset($xpMap[$key])) {
-                    // Give custom XP
                     $player->getXpManager()->addXp((int)$xpMap[$key]);
-                    // Cancel the vanilla XP drop
                     $event->setXpDropAmount(0);
                     break;
                 }
             }
-    
-            // — Existing reset-scheduling logic ——
+
             $this->getScheduler()->scheduleDelayedTask(
                 new class($this, $mineName) extends Task {
                     public function __construct(private Main $plugin, private string $mineName) {}
@@ -369,7 +468,7 @@ class Main extends PluginBase implements Listener {
                         if ($this->plugin->isRegionEmpty($this->mineName)
                             && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
                             $this->plugin->pendingEmptyResets[$this->mineName] = true;
-    
+
                             if ($this->plugin->isWarnEnabled()) {
                                 $mineData = $this->plugin->getMineData($this->mineName);
                                 if ($mineData !== null) {
@@ -385,7 +484,7 @@ class Main extends PluginBase implements Listener {
                                     }
                                 }
                             }
-    
+
                             $this->plugin->getScheduler()->scheduleDelayedTask(
                                 new class($this->plugin, $this->mineName) extends Task {
                                     public function __construct(private Main $plugin, private string $mineName) {}
@@ -401,12 +500,36 @@ class Main extends PluginBase implements Listener {
                 },
                 1
             );
-    
+
             break;
         }
     }
-    
-    
+
+    private function getWeightedDrop(array $dropList): string {
+        $flatList = [];
+        foreach ($dropList as $entry) {
+            foreach ($entry as $item => $chance) {
+                $flatList[$item] = (int)$chance;
+            }
+        }
+
+        $total = array_sum($flatList);
+        if ($total < 1) {
+            return key($flatList) ?? "";
+        }
+
+        $rand = mt_rand(1, $total);
+        $accum = 0;
+        foreach ($flatList as $item => $chance) {
+            $accum += (int)$chance;
+            if ($rand <= $accum) {
+                return $item;
+            }
+        }
+
+        return key($flatList) ?? "";
+    }
+ 
     public function onPlayerInteract(BlockBreakEvent $event): void {
         $p    = $event->getPlayer();
         $name = $p->getName();
@@ -426,17 +549,11 @@ class Main extends PluginBase implements Listener {
                 return; 
             }
     
-            // Unpack all inputs including lucky block fields
-            [$rawName, $rawBlocks, $rawTime, $luckyEnabled, $luckyBlockType, $luckySpawnChance] = $data;
-    
+            [$rawName, $rawBlocks, $rawTime] = $data;
             $mineName  = strtolower(trim($rawName));
             $blocks    = $this->parseBlocksInput($rawBlocks);
             $resetTime = max(0, (int)$rawTime);
             $playerName = $p->getName();
-    
-            $luckyBlocksEnabled = (bool)$luckyEnabled;
-            $luckyBlockType = trim((string)$luckyBlockType);
-            $luckySpawnChance = max(0, min(100, (int)$luckySpawnChance)); // clamp 0-100%
     
             if ($mineName === "" || empty($blocks)) {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
@@ -455,30 +572,14 @@ class Main extends PluginBase implements Listener {
     
             $p1 = $this->firstPosition[$playerName];
             $p2 = $this->secondPosition[$playerName];
-    
-            $mineData = [
+            $this->mines->set($mineName, [
                 "world"         => $p->getWorld()->getFolderName(),
                 "pos1"          => [$p1->getX(), $p1->getY(), $p1->getZ()],
                 "pos2"          => [$p2->getX(), $p2->getY(), $p2->getZ()],
                 "blocks"        => $blocks,
                 "autoResetTime" => $resetTime,
                 "blockXp"       => []
-            ];
-    
-            // Add lucky block config if enabled
-            if ($luckyBlocksEnabled) {
-                $mineData["luckyBlocksEnabled"] = true;
-                $mineData["luckyBlocks"] = [
-                    "default" => [
-                        "block" => $luckyBlockType !== "" ? $luckyBlockType : "minecraft:red_glazed_terracotta",
-                        "spawnChance" => $luckySpawnChance,
-                    ],
-                ];
-            } else {
-                $mineData["luckyBlocksEnabled"] = false;
-            }
-    
-            $this->mines->set($mineName, $mineData);
+            ]);
             $this->mines->save();
     
             $this->fillArea($p->getWorld(), $p1, $p2, $blocks);
@@ -486,6 +587,7 @@ class Main extends PluginBase implements Listener {
                 $this->schedulePeriodicReset($mineName, $resetTime);
             }
     
+
             $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' created!");
             unset(
                 $this->selectionMode[$playerName],
@@ -498,47 +600,34 @@ class Main extends PluginBase implements Listener {
         $form->addInput("Mine Name", "e.g. stone_mine");
         $form->addInput("Blocks", "stone,50,iron_ore,30");
         $form->addInput("Auto-reset time (sec)", "600");
-        $form->addToggle("Enable Lucky Blocks?", false);
-        $form->addInput("Lucky Block Type", "minecraft:red_glazed_terracotta");
-        $form->addInput("Lucky Block Spawn Chance (%)", "1");
-    
         $player->sendForm($form);
     }
-    
+
     private function openEditForm(Player $player, string $mineName): void {
-        $data = $this->mines->get($mineName);
+        $data      = $this->mines->get($mineName);
         $blocksCsv = implode(",", array_map(
             fn($b, $pct) => "{$b},{$pct}%",
             array_keys($data["blocks"]), array_values($data["blocks"])
         ));
         $time = (int)$data["autoResetTime"];
-    
-        // Get all lucky blocks and keys for dropdown
-        $luckyBlocks = $this->getAllLuckyBlocks();
-        $luckyBlockKeys = array_keys($luckyBlocks);
-    
-        $luckyEnabled = $data["luckyBlockEnabled"] ?? false;
-        $currentLuckyType = $data["luckyBlockType"] ?? null;
-    
-        // Find index of current lucky block type in keys for dropdown default
-        $luckySelectedIndex = array_search($currentLuckyType, $luckyBlockKeys, true);
-        if ($luckySelectedIndex === false) {
-            $luckySelectedIndex = 0;
-        }
-    
-        $form = new CustomForm(function(Player $p, ?array $dataIn) use ($mineName, $data, $luckyBlockKeys) {
+
+        // Default values for lucky blocks
+        $luckyEnabled = $data["lucky_blocks_enabled"] ?? false;
+        $availableLuckyTypes = array_keys($this->luckyBlockManager->getAllLuckyBlocks());
+        $selectedLucky = ($data["lucky_block_types"] ?? []);
+        $selectedLuckyIndex = $availableLuckyTypes !== [] && isset($selectedLucky[0])
+            ? array_search($selectedLucky[0], $availableLuckyTypes)
+            : 0;
+
+        $form = new CustomForm(function(Player $p, ?array $dataIn) use ($mineName, $data, $availableLuckyTypes) {
             if ($dataIn === null) return;
-    
-            [$newName, $rawBlocks, $rawTime, $luckyToggle, $luckyBlockIndex] = $dataIn;
-    
+
+            [$newName, $rawBlocks, $rawTime, $luckyToggle, $luckyTypeIndex] = $dataIn;
+
             $newName   = strtolower(trim((string)$newName));
             $blocks    = $this->parseBlocksInput($rawBlocks);
             $resetTime = max(0, (int)$rawTime);
-            $luckyEnabled = (bool)$luckyToggle;
-            $luckyBlockType = $luckyEnabled && isset($luckyBlockKeys[$luckyBlockIndex]) 
-                ? $luckyBlockKeys[$luckyBlockIndex] 
-                : null;
-    
+
             if ($newName === "" || empty($blocks)) {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
                 return;
@@ -547,42 +636,42 @@ class Main extends PluginBase implements Listener {
                 $p->sendMessage("§7[§l§dMine§r§7] §c>> §cA mine with the name '$newName' already exists!");
                 return;
             }
-    
             $this->cancelScheduledReset($mineName);
-    
+
             $newData = $data;
-            $newData["blocks"]            = $blocks;
-            $newData["autoResetTime"]     = $resetTime;
-            $newData["luckyBlockEnabled"] = $luckyEnabled;
-            $newData["luckyBlockType"]    = $luckyBlockType;
-    
+            $newData["blocks"] = $blocks;
+            $newData["autoResetTime"] = $resetTime;
+            $newData["lucky_blocks_enabled"] = $luckyToggle;
+            $newData["lucky_block_types"] = [$availableLuckyTypes[$luckyTypeIndex]];
+
             if (strtolower($newName) !== strtolower($mineName)) {
                 $this->mines->remove($mineName);
             }
+
             $this->mines->set($newName, $newData);
             $this->mines->save();
             $this->mines->reload();
-    
+
             if ($resetTime > 0) {
                 $this->schedulePeriodicReset($newName, $resetTime);
             }
-    
+
             $this->resetMineByName($newName);
-    
+
             $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' updated to '$newName'!");
         });
-    
+
         $form->setTitle("Edit Mine: $mineName");
         $form->addInput("Mine Name", "e.g. stone_mine", $mineName);
         $form->addInput("Blocks", "e.g. stone,50,iron_ore,30", $blocksCsv);
-        $form->addInput("Auto-reset time (sec)", "e.g. 600", (string)$time);
-        $form->addToggle("Enable Lucky Block", $luckyEnabled);
-        $form->addDropdown("Choose Lucky Block Type", $luckyBlockKeys, $luckySelectedIndex);
-    
+        $form->addInput("Auto‐reset time (sec)", "e.g. 600", (string)$time);
+
+        // Lucky Block Settings
+        $form->addToggle("Enable Lucky Blocks", $luckyEnabled);
+        $form->addStepSlider("Lucky Block Type", $availableLuckyTypes, $selectedLuckyIndex);
+
         $player->sendForm($form);
     }
-
-    
 
     private function openMineListForm(Player $player, string $mode): void {
         $form = new SimpleForm(function(Player $p, ?int $idx) use($mode){
@@ -672,15 +761,15 @@ class Main extends PluginBase implements Listener {
             $this->getLogger()->warning("Mine '$name' not found in config.");
             return;
         }
-    
+
         $world = $this->getServer()->getWorldManager()->getWorldByName($data["world"]);
         if (!$world instanceof World) return;
-    
+
         $p1   = new Vector3(...$data["pos1"]);
         $p2   = new Vector3(...$data["pos2"]);
         $topY = max($p1->getY(), $p2->getY()) + 1;
-    
-        // Teleport players inside the mine above it during reset
+
+        // Teleport players out of the mine during reset
         foreach ($world->getPlayers() as $player) {
             $pos = $player->getPosition();
             if ($this->isInside($pos, $p1, $p2)) {
@@ -688,34 +777,16 @@ class Main extends PluginBase implements Listener {
                 $player->sendMessage("§7[§l§dMine§r§7] §c>> §eYou have been teleported above the mine due to a reset.");
             }
         }
-    
+
+        $this->clearArea($world, $p1, $p2);
+
+        // Fill the mine area with blocks (including lucky blocks)
+        $this->fillArea($world, $p1, $p2, $data["blocks"]);
+
+        // Send reset notification if enabled
         if ($this->warnEnabled) {
             foreach ($world->getPlayers() as $player) {
                 $player->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '{$name}' has been reset!");
-            }
-        }
-    
-        // Fill the mine area with configured blocks
-        $this->fillArea($world, $p1, $p2, $data["blocks"]);
-    
-        // --- Lucky Block spawning logic ---
-    
-        if (!empty($data["luckyBlocksEnabled"]) && $data["luckyBlocksEnabled"] === true) {
-            if (isset($data["luckyBlocks"]) && is_array($data["luckyBlocks"])) {
-                foreach ($data["luckyBlocks"] as $luckyName => $luckyConfig) {
-                    $chance = $luckyConfig["spawnChance"] ?? 0;
-                    if (mt_rand(1, 100) <= $chance) {
-                        $x = mt_rand(min($p1->getX(), $p2->getX()), max($p1->getX(), $p2->getX()));
-                        $y = mt_rand(min($p1->getY(), $p2->getY()), max($p1->getY(), $p2->getY()));
-                        $z = mt_rand(min($p1->getZ(), $p2->getZ()), max($p1->getZ(), $p2->getZ()));
-        
-                        $item = StringToItemParser::getInstance()->parse($luckyConfig["block"] ?? "minecraft:red_glazed_terracotta");
-                        if ($item !== null && !$item->isNull()) {
-                            $block = $item->getBlock();
-                            $world->setBlock(new Vector3($x, $y, $z), $block, false);
-                        }
-                    }
-                }
             }
         }
     }
@@ -727,15 +798,42 @@ class Main extends PluginBase implements Listener {
         $maxY = max($p1->getY(), $p2->getY());
         $minZ = min($p1->getZ(), $p2->getZ());
         $maxZ = max($p1->getZ(), $p2->getZ());
-    
+
+        $lucky = $this->getLuckyBlockManager();
+
         for ($x = $minX; $x <= $maxX; $x++) {
             for ($y = $minY; $y <= $maxY; $y++) {
                 for ($z = $minZ; $z <= $maxZ; $z++) {
                     $name = $this->getRandomBlock($blocks);
-                    $item = StringToItemParser::getInstance()->parse($name);
+
+                    if ($lucky->exists($name)) {
+                        $typeData = $lucky->get($name);
+                        $item = StringToItemParser::getInstance()->parse($typeData["block_id"]);
+                    } else {
+                        $item = StringToItemParser::getInstance()->parse($name);
+                    }
+
                     if ($item === null) continue;
+
                     $block = $item->getBlock();
                     $world->setBlock(new Vector3($x, $y, $z), $block, false);
+                }
+            }
+        }
+    }
+
+    private function clearArea(World $world, Vector3 $p1, Vector3 $p2): void {
+        $minX = min($p1->getX(), $p2->getX());
+        $maxX = max($p1->getX(), $p2->getX());
+        $minY = min($p1->getY(), $p2->getY());
+        $maxY = max($p1->getY(), $p2->getY());
+        $minZ = min($p1->getZ(), $p2->getZ());
+        $maxZ = max($p1->getZ(), $p2->getZ());
+
+        for ($x = $minX; $x <= $maxX; $x++) {
+            for ($y = $minY; $y <= $maxY; $y++) {
+                for ($z = $minZ; $z <= $maxZ; $z++) {
+                    $world->setBlock(new Vector3($x, $y, $z), VanillaBlocks::AIR());
                 }
             }
         }
