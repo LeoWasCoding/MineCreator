@@ -18,6 +18,7 @@ use pocketmine\block\Air;
 use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
+use jojoe77777\FormAPI\FormAPI;
 use pocketmine\scheduler\TaskHandler;
 
 class Main extends PluginBase implements Listener {
@@ -44,18 +45,19 @@ class Main extends PluginBase implements Listener {
     }
     
 
-
     public function onEnable(): void {
         @mkdir($this->getDataFolder());
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
     
-        $this->formapi = $this->getServer()->getPluginManager()->getPlugin("FormAPI");
-        if ($this->formapi === null) {
-            $this->getLogger()->error("FormAPI (jojoe77777) not found — disabling.");
+        $plugin = $this->getServer()->getPluginManager()->getPlugin("FormAPI");
+        if (!$plugin instanceof FormAPI) {
+            $this->getLogger()->error("FormAPI (jojoe77777) not found or not the correct type — disabling.");
             $this->getServer()->getPluginManager()->disablePlugin($this);
             return;
         }
-
+    
+        $this->formapi = $plugin;
+    
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
         foreach ($this->mines->getAll() as $name => $data) {
             $interval = (int)($data["autoResetTime"] ?? 0);
