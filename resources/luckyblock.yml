@@ -1,0 +1,15 @@
+luckyBlocks:
+  default:
+    spawnChance: 5  # Percent chance to spawn per reset
+    blockId: "minecraft:gold_block"
+    blockMeta: 0
+
+  rare:
+    spawnChance: 2
+    blockId: "minecraft:diamond_block"
+    blockMeta: 0
+
+  epic:
+    spawnChance: 1
+    blockId: "minecraft:emerald_block"
+    blockMeta: 0
