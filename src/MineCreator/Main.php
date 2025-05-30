@@ -30,7 +30,7 @@ class Main extends PluginBase implements Listener {
     /** @var array<string,Vector3> */
     private array $secondPosition = [];
     
-    private Config $mines;
+    private ?Config $mines = null;
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
@@ -96,7 +96,9 @@ class Main extends PluginBase implements Listener {
     
 
     public function onDisable(): void {
-        $this->mines->save();
+        if ($this->mines !== null) {
+            $this->mines->save();
+        }
     }
 
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
