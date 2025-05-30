@@ -614,11 +614,7 @@ class Main extends PluginBase implements Listener {
         }
     
         $this->fillArea($world, $p1, $p2, $data["blocks"]);
-    }
-    
-    
-    
-    
+    }    
 
     private function fillArea(World $world, Vector3 $p1, Vector3 $p2, array $blocks): void {
         $minX = min($p1->getX(), $p2->getX());
@@ -627,15 +623,15 @@ class Main extends PluginBase implements Listener {
         $maxY = max($p1->getY(), $p2->getY());
         $minZ = min($p1->getZ(), $p2->getZ());
         $maxZ = max($p1->getZ(), $p2->getZ());
-
-        for($x = $minX; $x <= $maxX; $x++){
-            for($y = $minY; $y <= $maxY; $y++){
-                for($z = $minZ; $z <= $maxZ; $z++){
+    
+        for ($x = $minX; $x <= $maxX; $x++) {
+            for ($y = $minY; $y <= $maxY; $y++) {
+                for ($z = $minZ; $z <= $maxZ; $z++) {
                     $name = $this->getRandomBlock($blocks);
                     $item = StringToItemParser::getInstance()->parse($name);
-                    if($item === null) continue;
+                    if ($item === null) continue;
                     $block = $item->getBlock();
-                    $world->setBlock(new Vector3($x, $y, $z), $block, false, false);
+                    $world->setBlock(new Vector3($x, $y, $z), $block, false);
                 }
             }
         }
