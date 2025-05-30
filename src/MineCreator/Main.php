@@ -422,7 +422,7 @@ class Main extends PluginBase implements Listener {
                         
                                     if ($selected !== null) {
                                         $command = str_replace("{player}", $player->getName(), $selected);
-                                        $consoleSender = $this->getServer()->getCommandMap()->getConsoleSender();
+                                        $consoleSender = $this->getServer()->getConsoleSender();
                                         $this->getServer()->dispatchCommand($consoleSender, $command);
                                     }
                                 }
