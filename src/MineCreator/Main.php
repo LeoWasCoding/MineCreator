@@ -11,6 +11,7 @@ use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\player\PlayerInteractEvent;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
+use pocketmine\command\ConsoleCommandSender;
 use pocketmine\utils\Config;
 use pocketmine\math\Vector3;
 use pocketmine\world\World;
