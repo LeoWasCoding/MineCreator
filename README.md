@@ -52,6 +52,7 @@ Create, edit, and reset mines with region selection, percentage-based block fill
    ```
 
    Example: `/mine setblockxp mine1 iron_ore 10`
+---
 7. Use the Lucky Block item (configurable) to spawn Lucky Blocks inside mines and enjoy random drops with effects.
 
 > You can cancel or redo the region selection if you make a mistake before creating the mine.
@@ -72,6 +73,7 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 * Define possible drops with custom chances and quantities.
 * Configure particle and sound effects for Lucky Block activation.
 
+---
 
 ## File Structure
 
