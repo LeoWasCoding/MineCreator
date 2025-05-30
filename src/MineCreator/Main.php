@@ -343,7 +343,7 @@ class Main extends PluginBase implements Listener {
 
                     if ($block->getTypeId() === $luckyItem->getBlock()->getTypeId()) {
                         // -- DEBUG: lucky block detected
-                        $player->sendMessage("§a[LuckyBlock] Detected break of '{$luckyName}' block.");
+                        $player->sendMessage("§a[LuckyBlock] §6You mined a lucky block!");
                         $event->setDrops([]);
 
                         // Build flat chance map
@@ -438,16 +438,14 @@ class Main extends PluginBase implements Listener {
                                         $this->getServer()->dispatchCommand($console, $command);
                                     }
                                 }
-                            } else {
-                                $player->sendMessage("§c[LuckyBlock] Command weights add up to 0. Skipping commands.");
                             }
                         } elseif (!is_array($luckyData["commands"])) {
-                            $player->sendMessage("§c[LuckyBlock] Invalid 'commands' format in luckyblock.yml. Must be an array.");
+                            $player->sendMessage("§c[LuckyBlock] Invalid 'commands' format in luckyblock.yml. Must be an array. Report to an admin!");
                         }
 
                         // effects
                         if (!empty($luckyData["effects"]["particles"])) {
-                            $color = new Color(255, 255, 0); // Yellow
+                            $color = new Color(255, 255, 0); // Yellow color :P (for the luckyblock effect ofc)
                             for ($i = 0; $i < 12; $i++) {
                                 $dx = mt_rand(-50, 50) / 100;
                                 $dy = mt_rand(-50, 50) / 100;
