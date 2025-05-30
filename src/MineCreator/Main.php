@@ -29,14 +29,14 @@ class Main extends PluginBase implements Listener {
     private array $firstPosition = [];
     /** @var array<string,Vector3> */
     private array $secondPosition = [];
-
-    /** @var \jojoe77777\FormAPI\FormAPI|null */
-    private ?\jojoe77777\FormAPI\FormAPI $formapi = null;
+    
     private Config $mines;
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
-
+    
+    /** @phpstan-ignore-next-line */
+    private ?\jojoe77777\FormAPI\FormAPI $formapi = null;
     /** @var TaskHandler[] */
     private array $scheduledTasks = [];
 
