@@ -549,7 +549,7 @@ class Main extends PluginBase implements Listener {
         }
     }
     
-
+    $this->plugin->getLogger()->info("Mine '{$this->mineName}' scheduled to reset every {$this->intervalSec} seconds.");
     private function schedulePeriodicReset(string $name, int $intervalSec): void {
         $handler = $this->getScheduler()->scheduleRepeatingTask(
             new class($this, $name, $intervalSec) extends Task {
