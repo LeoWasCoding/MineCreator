@@ -705,7 +705,7 @@ class Main extends PluginBase implements Listener {
                         $item = StringToItemParser::getInstance()->parse($luckyConfig["block"] ?? "minecraft:red_glazed_terracotta");
                         if ($item !== null && !$item->isNull()) {
                             $block = $item->getBlock();
-                            $world->setBlock(new Vector3($x, $y, $z), $block, false, true);
+                            $world->setBlock(new Vector3($x, $y, $z), $block, false);
                         }
                     }
                 }
