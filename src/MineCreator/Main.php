@@ -2,30 +2,42 @@
 
 namespace MineCreator;
 
+// ── Core ──
 use pocketmine\plugin\PluginBase;
-use pocketmine\block\VanillaBlocks;
 use pocketmine\player\Player;
-use pocketmine\event\player\PlayerChatEvent;
+use pocketmine\command\Command;
+use pocketmine\command\CommandSender;
+use pocketmine\utils\Config;
+
+// ── Blocks & Items ──
+use pocketmine\block\VanillaBlocks;
+use pocketmine\block\Air;
+use pocketmine\item\StringToItemParser;
+
+// ── Events ──
 use pocketmine\event\Listener;
 use pocketmine\event\block\BlockBreakEvent;
 use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\command\Command;
-use pocketmine\command\CommandSender;
-use pocketmine\command\ConsoleCommandSender;
-use pocketmine\utils\Config;
+use pocketmine\event\player\PlayerChatEvent;
+
+// ── World & Math ──
 use pocketmine\math\Vector3;
 use pocketmine\world\World;
-use pocketmine\item\StringToItemParser;
-use pocketmine\block\Air;
-use pocketmine\scheduler\Task;
-use jojoe77777\FormAPI\SimpleForm;
-use jojoe77777\FormAPI\CustomForm;
-use pocketmine\scheduler\TaskHandler;
-use pocketmine\world\sound\Sound;
 use pocketmine\color\Color;
+
+// ── Scheduler ──
+use pocketmine\scheduler\Task;
+use pocketmine\scheduler\TaskHandler;
+
+// ── Particles & Sounds ──
 use pocketmine\world\particle\Particle;
 use pocketmine\world\particle\DustParticle;
+use pocketmine\world\sound\Sound;
 use pocketmine\world\sound\XpLevelUpSound;
+
+// ── External Libraries ──
+use jojoe77777\FormAPI\SimpleForm;
+use jojoe77777\FormAPI\CustomForm;
 
 class Main extends PluginBase implements Listener {
 
@@ -383,18 +395,19 @@ class Main extends PluginBase implements Listener {
                         // ── COMMAND EXECUTION ──
                         if (
                             isset($luckyData["min_cmd_count"], $luckyData["max_cmd_count"]) &&
-                            isset($luckyData["commands"]) &&
                             is_array($luckyData["commands"]) &&
                             !empty($luckyData["commands"])
                         ) {
+                            // Normalize command chance list
                             $cmdMap = [];
-                        
-                            // Support both formats: [cmd => chance] and [[cmd => chance], ...]
+
                             if (is_string(array_key_first($luckyData["commands"]))) {
+                                // Format: command => chance
                                 foreach ($luckyData["commands"] as $cmd => $chance) {
                                     $cmdMap[$cmd] = (int)$chance;
                                 }
                             } else {
+                                // Format: list of arrays
                                 foreach ($luckyData["commands"] as $entry) {
                                     if (is_array($entry)) {
                                         foreach ($entry as $cmd => $chance) {
@@ -403,7 +416,7 @@ class Main extends PluginBase implements Listener {
                                     }
                                 }
                             }
-                        
+
                             $totalWeight = array_sum($cmdMap);
                             if ($totalWeight > 0) {
                                 $cmdCount = mt_rand((int)$luckyData["min_cmd_count"], (int)$luckyData["max_cmd_count"]);
@@ -411,7 +424,6 @@ class Main extends PluginBase implements Listener {
                                     $r = mt_rand(1, $totalWeight);
                                     $acc = 0;
                                     $selected = null;
-                        
                                     foreach ($cmdMap as $cmd => $weight) {
                                         $acc += $weight;
                                         if ($r <= $acc) {
@@ -419,11 +431,11 @@ class Main extends PluginBase implements Listener {
                                             break;
                                         }
                                     }
-                        
+
                                     if ($selected !== null) {
                                         $command = str_replace("{player}", $player->getName(), $selected);
-                                        $consoleSender = $this->getServer()->getConsoleSender();
-                                        $this->getServer()->dispatchCommand($consoleSender, $command);
+                                        $console = new \pocketmine\console\ConsoleCommandSender($this->getServer(), $this->getServer()->getLanguage());
+                                        $this->getServer()->dispatchCommand($console, $command);
                                     }
                                 }
                             } else {
