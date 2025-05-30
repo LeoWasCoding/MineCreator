@@ -72,7 +72,6 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 * Define possible drops with custom chances and quantities.
 * Configure particle and sound effects for Lucky Block activation.
 
----
 
 ## File Structure
 
