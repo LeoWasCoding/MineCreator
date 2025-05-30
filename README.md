@@ -72,63 +72,6 @@ Use `/minewarn on` or `/minewarn off` to enable or disable this feature.
 * Define possible drops with custom chances and quantities.
 * Configure particle and sound effects for Lucky Block activation.
 
-### Configuration (`luckyblock.yml`)
-
-```yaml
-# Enable or disable the lucky blocks feature globally.
-# (Do not disable if you use lucky blocks in any mines, or they will become air.)
-lucky_blocks_enabled: true
-
-# List of active lucky block types on the server.
-# Only these block types trigger lucky block effects when broken.
-lucky_block_types:
-  - gold_lucky_block
-  - diamond_lucky_block
-
-# --------------------------------------#
-# Configuration for diamond_lucky_block #
-# --------------------------------------#
-diamond_lucky_block:
-  # Block ID for this lucky block
-  block_id: "minecraft:diamond_block"
-
-  # Number of items to drop (random between these values)
-  min_drop_count: 2
-  max_drop_count: 5
-
-  # Number of commands to execute (random between these values)
-  min_cmd_count: 1
-  max_cmd_count: 5
-
-  # Weighted item drop list using array format (supports multiple entries)
-  drop_list:
-    - iron_ingot: 25
-    - gold_ingot: 25
-    - diamond: 40
-    - emerald: 10
-
-  # List of commands to run when the lucky block is broken.
-  # {player} will be replaced with the breaking player’s name.
-  commands:
-    - "give {player} netherite_sword": 25
-    - "give {player} diamond 1": 25
-    - "give {player} dirt 1": 40
-    - "xp 1000 {player}": 10
-
-  # Effects to play on lucky block activation
-  effects:
-    particles: true
-    sound: true
-```
-
-### Notes
-
-* Lucky blocks only work if `lucky_blocks_enabled` is `true`.
-* Only the block types listed under `lucky_block_types` will trigger lucky block effects.
-* You can configure multiple lucky block types with their own drop lists, commands, and effects.
-* Commands can include placeholders such as `{player}`, which will be replaced with the player’s name who broke the lucky block.
-* Effects like particles and sounds can be toggled for each lucky block type.
-
 ---
 
 ## File Structure
@@ -154,7 +97,6 @@ diamond_lucky_block:
     }
   }
   ```
-* `luckyblock.yml`: Configuration file for Lucky Block features.
 
 ## Admin Permissions
 
