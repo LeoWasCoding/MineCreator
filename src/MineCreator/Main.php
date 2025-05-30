@@ -18,7 +18,6 @@ use pocketmine\block\Air;
 use pocketmine\scheduler\Task;
 use jojoe77777\FormAPI\SimpleForm;
 use jojoe77777\FormAPI\CustomForm;
-use jojoe77777\FormAPI\FormAPI;
 use pocketmine\scheduler\TaskHandler;
 
 class Main extends PluginBase implements Listener {
@@ -34,39 +33,28 @@ class Main extends PluginBase implements Listener {
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
-    
-    /** @phpstan-ignore-next-line */
-    private ?\jojoe77777\FormAPI\FormAPI $formapi = null;
+
     /** @var TaskHandler[] */
     private array $scheduledTasks = [];
+
+    private Config $luckyBlocks;
 
     public function isWarnEnabled(): bool {
         return $this->warnEnabled;
     }
-    
-    private Config $luckyBlocks;
 
     public function onEnable(): void {
         @mkdir($this->getDataFolder());
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
-
-        $plugin = $this->getServer()->getPluginManager()->getPlugin("FormAPI");
-        if (!$plugin instanceof FormAPI) {
-            $this->getLogger()->error("FormAPI (jojoe77777) not found or not the correct type — disabling.");
-            $this->getServer()->getPluginManager()->disablePlugin($this);
-            return;
-        }
-
-        $this->formapi = $plugin;
-
+    
         // Load mines config
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
-
+    
         // Load lucky blocks config (YAML)
         $this->luckyBlocks = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML, [
             "lucky_blocks" => []
         ]);
-
+    
         // Schedule periodic resets for mines with intervals
         foreach ($this->mines->getAll() as $name => $data) {
             $interval = (int)($data["autoResetTime"] ?? 0);
