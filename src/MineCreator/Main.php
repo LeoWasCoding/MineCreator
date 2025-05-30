@@ -51,9 +51,26 @@ class Main extends PluginBase implements Listener {
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
     
         // Load lucky blocks config (YAML)
-        $this->luckyBlocks = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML, [
-            "lucky_blocks" => []
-        ]);
+        $this->luckyBlocks = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
+    
+        // Provide defaults if config is empty or missing expected keys
+        if (!$this->luckyBlocks->exists("lucky_blocks") || empty($this->luckyBlocks->get("lucky_blocks"))) {
+            $this->luckyBlocks->set("lucky_blocks", [
+                "default" => [
+                    "spawn_chance" => 5,
+                    "block" => "minecraft:gold_block"
+                ],
+                "rare" => [
+                    "spawn_chance" => 2,
+                    "block" => "minecraft:diamond_block"
+                ],
+                "epic" => [
+                    "spawn_chance" => 1,
+                    "block" => "minecraft:emerald_block"
+                ]
+            ]);
+            $this->luckyBlocks->save();
+        }
     
         // Schedule periodic resets for mines with intervals
         foreach ($this->mines->getAll() as $name => $data) {
