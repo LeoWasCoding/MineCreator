@@ -1,0 +1,141 @@
+# ┌─────────────────────────────────────────────────────────────────────────────────┐
+# │                               Placeholders                                      │
+# ├─────────────────────────────────────────────────────────────────────────────────┤
+# │   {mine}     – replaced with the mine’s name (e.g., "stone_mine")               │
+# │   {block}    – replaced with a block’s alias or ID (e.g., "stone")              │
+# │   {alias}    – same as {block}, normalized alias for consistency                │
+# │   {xp}       – replaced with an XP value (integer)                              │
+# │   {item}     – replaced with an item ID (e.g., "diamond_sword")                 │
+# │   {pos}      – replaced with a Vector3 position string (e.g., "Vector3(x,y,z)") │
+# │   {new}      – replaced with a new mine name when renaming                      │
+# │   {old}      – replaced with the old mine name when renaming                    │
+# │                                                                                 │
+# │   additional:                                                                   │
+# │       {status} {name}                                                           │
+# │                                                                                 │
+# │   - Do not add additional placeholders inside a msg which does not use it.      │
+# └─────────────────────────────────────────────────────────────────────────────────┘
+
+# When you try to use a command on console, it will send this.
+use_in_game: "Use in-game!"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                               /minewarn                                    │
+# └────────────────────────────────────────────────────────────────────────────┘
+no_permission_minewarn: "§7[§l§dMine§r§7] §c>> §cYou don't have permission to toggle mine warnings."
+usage_minewarn:         "§7[§l§dMine§r§7] §c>> §eUsage: §b/minewarn <on|off>"
+minewarn_enabled:       "§7[§l§dMine§r§7] §c>> §aMine reset warnings §benabled§a."
+minewarn_disabled:      "§7[§l§dMine§r§7] §c>> §cMine reset warnings §bdisabled§c."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                             /mine Help Menu                                │
+# └────────────────────────────────────────────────────────────────────────────┘
+mine_help_header:        "§6§l===== §eMineCreator Help §6§l====="
+mine_help_item1:         "§e/mine help §7– Show this help menu."
+mine_help_list:          "§e/mine list §7– List all existing mines."
+mine_help_list_desc:     "   §8Shows you every mine by name．"
+mine_help_pos:           "§e/mine position §7– Start defining a new mine region."
+mine_help_pos_desc:      "   §8Break one block for the §bfirst corner§8, then another for the §bsecond corner§8．"
+mine_help_create:        "§e/mine create §7– Open the Create Mine form."
+mine_help_create_desc:   "   §8After selecting positions， this lets you:"
+mine_help_create_bullets:
+  - "   §8 • Name your mine (e.g. §bstone_mine§8)"
+  - "   §8 • Choose blocks & percentages (e.g. §cstone,50,iron_ore,30§8)"
+  - "   §8 • Set auto-reset interval in seconds (e.g. §b600§8)"
+mine_help_edit:          "§e/mine edit <name> §7– Edit an existing mine via form."
+mine_help_edit_desc:     "   §8Change its name, blocks, or auto-reset time．"
+mine_help_reset:         "§e/mine reset <name> §7– Immediately reset a mine."
+mine_help_reset_desc:    "   §8Teleports anyone inside up above, refills the region．"
+mine_help_delete:        "§e/mine delete <name> §7– Permanently delete a mine."
+mine_help_delete_desc:   "   §8Removes it from config and cancels auto-resets．"
+mine_help_setblockxp:    "§e/mine setblockxp <mine> <block> <xp> §7– Set XP drop for a specific block in a mine."
+mine_help_setblockxp_desc: "   §8Updates the mine’s config and applies immediately."
+mine_help_blockdrop: "§e/mine blockdrop <mine> <block> <true|false> §7– Enable or disable drops for specific blocks in a mine"
+mine_help_blockdrop_desc: "    §8Toggle whether breaking a specific block in the mine drops items or not．"
+mine_help_minewarn: "§e/mine minewarn <mine> <true|false> §7– Enable or disable warning messages before a mine reset"
+mine_help_minewarn_desc: "   §8Control if players receive warnings when the mine is about to reset．"
+mine_help_reload:        "§e/mine reload §7– Reload this plugin."
+mine_help_reload_desc:   "   §8Disables and re-enables MineCreator， reloading all settings."
+mine_help_footer:        "§6§l==============================="
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                       /mine setblockxp & blockdrops                        │
+# └────────────────────────────────────────────────────────────────────────────┘
+usage_setblockxp:        "§7[§l§dMine§r§7] §c>> §eUsage: §b/mine setblockxp <mine> <block> <xp>"
+unknown_block:           "§7[§l§dMine§r§7] §c>> §cUnknown block: {block}"
+mine_not_found:          "§7[§l§dMine§r§7] §c>> §cMine '{mine}' not found!"
+xp_set_success:          "§7[§l§dMine§r§7] §c>> §aSet XP of {xp} for block '{alias}' in mine '{mine}'."
+
+usage_blockdrop: "§cUsage: /mine blockdrop <mine> <block> <true/false>"
+block_drop_toggle_success: "§aBlock drop for '{block}' in mine '{mine}' set to '{status}'."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                             /mine position                                 │
+# └────────────────────────────────────────────────────────────────────────────┘
+prompt_select_first:     "§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then break another for §bSecond§a pos."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                            /mine create logic                              │
+# └────────────────────────────────────────────────────────────────────────────┘
+need_two_positions:      "§7[§l§dMine§r§7] §c>> §cSelect two positions first with §e/mine position§c!"
+mine_already_exists_on_create: "§7[§l§dMine§r§7] §c>> §cA mine named '{mine}' already exists. Please choose another."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                            Selection Control                               │
+# └────────────────────────────────────────────────────────────────────────────┘
+selection_cancelled:     "§7[§l§dMine§r§7] §c>> §6Selection cancelled. You can start again."
+first_position_set:      "§7[§l§dMine§r§7] §c>> §aFirst position set at {pos}"
+second_position_set:     "§7[§l§dMine§r§7] §c>> §aSecond position set at {pos}"
+prompt_next_create:      "§7[§l§dMine§r§7] §c>> §bType §l§cCancel §r§bTo Start Over Or §l§e/mine create §r§bTo Create The Mine"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                              Lucky Blocks                                  │
+# └────────────────────────────────────────────────────────────────────────────┘
+luckyblock_found:        "§a[LuckyBlock] §6You mined a lucky block!"
+luckyblock_zero_weight:  "§c[LuckyBlock] total weight is zero, no drops will occur. Report to an admin!"
+luckyblock_no_item:      "§c[LuckyBlock] no item selected (unexpected). Report to an admin!"
+luckyblock_parse_fail:   "§c[LuckyBlock] failed to parse item '{item}'. Report to an admin!"
+luckyblock_invalid_cmd:  "§c[LuckyBlock] Invalid 'commands' format in luckyblock.yml. Must be an array. Report to an admin!"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                          Mine Reset & Warnings                             │
+# └────────────────────────────────────────────────────────────────────────────┘
+mine_will_reset_in:      "§7[§l§dMine§r§7] §c>> §6Mine '{mine}' will reset in 5 seconds!"
+mine_reset_warning:      "§7[§l§dMine§r§7] §c>> §6Mine '{mine}' will reset in 5 seconds!"  # alias for consistency
+mine_reset_teleport:     "§7[§l§dMine§r§7] §c>> §eYou have been teleported above the mine due to a reset."
+mine_reset_complete:     "§7[§l§dMine§r§7] §c>> §aMine '{mine}' has been reset!"
+mine_reset_success:      "§7[§l§dMine§r§7] §c>> §aMine '{mine}' reset."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                          /mine list & delete                               │
+# └────────────────────────────────────────────────────────────────────────────┘
+no_mines_exist:         "§7[§l§dMine§r§7] §c>> §eNo mines have been created yet."
+available_mines:        "§7[§l§dMine§r§7] §c>> §aAvailable Mines:"
+mine_list_entry:        "§7[§l§dMine§r§7] §c>> §b- {mine}"
+mine_deleted_success:   "§7[§l§dMine§r§7] §c>> §aMine '{mine}' deleted successfully."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                            /mine reload                                    │
+# └────────────────────────────────────────────────────────────────────────────┘
+no_permission_reload:   "§7[§l§dMine§r§7] §c>> §cYou don't have permission to reload."
+reload_success:         "§7[§l§dMine§r§7] §c>> §aMineCreator has been reloaded!"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                           Mine updates & errors                           │
+# └────────────────────────────────────────────────────────────────────────────┘
+mine_updated_success:   "§7[§l§dMine§r§7] §c>> §aMine '{old}' updated to '{new}'!"
+mine_already_exists:    "§7[§l§dMine§r§7] §c>> §cA mine with the name '{name}' already exists!"
+invalid_name_or_blocklist: "§7[§l§dMine§r§7] §c>> §cInvalid name or block list!"
+mine_created:           "§7[§l§dMine§r§7] §c>> §aMine '{mine}' created!"
+must_select_positions:  "§7[§l§dMine§r§7] §c>> §cYou must select two positions first with /mine position!"
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                           Fallback / Unknown                               │
+# └────────────────────────────────────────────────────────────────────────────┘
+generic_unknown:        "§7[§l§dMine§r§7] §c>> §cUnknown subcommand. Type §e/mine help §cfor a list of commands."
+
+# ┌────────────────────────────────────────────────────────────────────────────┐
+# │                      Additional Optional Messages                           │
+# └────────────────────────────────────────────────────────────────────────────┘
+xp_gained:              "§7[§l§dMine§r§7] §c>> §aYou gained {xp} XP from mining '{block}'"
+mine_rename_success:    "§7[§l§dMine§r§7] §c>> §aMine '{old}' renamed to '{new}'!"
