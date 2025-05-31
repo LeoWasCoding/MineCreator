@@ -34,6 +34,7 @@ use pocketmine\world\particle\Particle;
 use pocketmine\world\particle\DustParticle;
 use pocketmine\world\sound\Sound;
 use pocketmine\world\sound\XpLevelUpSound;
+use pocketmine\world\sound\ExplodeSound;
 
 // ── External Libraries ──
 use jojoe77777\FormAPI\SimpleForm;
@@ -59,6 +60,8 @@ class Main extends PluginBase implements Listener {
 
     private Config $luckyBlocksConfig;
 
+    private Config $messages;
+
     private LuckyBlockManager $luckyBlockManager;
 
     public function isWarnEnabled(): bool {
@@ -68,13 +71,18 @@ class Main extends PluginBase implements Listener {
     public function getLuckyBlockManager(): LuckyBlockManager {
         return $this->luckyBlockManager;
     }
-    
+
+    public function getMessage(string $key): string {
+        return $this->messages->get($key, "");
+    }    
 
     public function onEnable(): void {
         @mkdir($this->getDataFolder());
         $this->saveResource("luckyblock.yml");
+        $this->saveResource("messages.yml");
         $this->luckyBlocksConfig = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
         $this->luckyBlockManager = new LuckyBlockManager($this->getDataFolder());
+        $this->messages = new Config($this->getDataFolder() . "messages.yml", Config::YAML);
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
         foreach ($this->mines->getAll() as $name => $data) {
@@ -92,7 +100,7 @@ class Main extends PluginBase implements Listener {
 
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
         if (!$sender instanceof Player) {
-            $sender->sendMessage("Use in-game!");
+            $sender->sendMessage($this->messages->get("use_in_game"));
             return true;
         }
     
@@ -101,68 +109,78 @@ class Main extends PluginBase implements Listener {
     
         if ($name === "minewarn") {
             if (!$sender->hasPermission("minecreator.command.minewarn")) {
-                $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cYou don't have permission to toggle mine warnings.");
+                $sender->sendMessage($this->messages->get("no_permission_minewarn"));
                 return true;
             }
             if (count($args) !== 1 || !in_array($sub, ["on", "off"], true)) {
-                $sender->sendMessage("§7[§l§dMine§r§7] §c>> §eUsage: §b/minewarn <on|off>");
+                $sender->sendMessage($this->messages->get("usage_minewarn"));
                 return true;
             }
             $this->warnEnabled = ($sub === "on");
-            $sender->sendMessage(
-                $this->warnEnabled
-                    ? "§7[§l§dMine§r§7] §c>> §aMine reset warnings §benabled§a."
-                    : "§7[§l§dMine§r§7] §c>> §cMine reset warnings §bdisabled§c."
-            );
+            if ($this->warnEnabled) {
+                $sender->sendMessage($this->messages->get("minewarn_enabled"));
+            } else {
+                $sender->sendMessage($this->messages->get("minewarn_disabled"));
+            }
             return true;
         }
 
         if ($name === "mine") {
             if ($sub === "" || $sub === "help") {
-                $sender->sendMessage("§6§l===== §eMineCreator Help §6§l=====");
-                $sender->sendMessage("§e/mine help §7– Show this help menu.");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine list §7– List all existing mines.");
-                $sender->sendMessage("   §8Shows you every mine by name.");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine position §7– Start defining a new mine region.");
-                $sender->sendMessage("   §8Break one block for the §bfirst corner§8, then another for the §bsecond corner§8.");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine create §7– Open the Create Mine form.");
-                $sender->sendMessage("   §8After selecting positions, this lets you:");
-                $sender->sendMessage("   §8 • Name your mine (e.g. §bstone_mine§8)");
-                $sender->sendMessage("   §8 • Choose blocks & percentages (e.g. §cstone,50,iron_ore,30§8)");
-                $sender->sendMessage("   §8 • Set auto-reset interval in seconds (e.g. §b600§8)");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine edit <name> §7– Edit an existing mine via form.");
-                $sender->sendMessage("   §8Change its name, blocks, or auto-reset time.");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine reset <name> §7– Immediately reset a mine.");
-                $sender->sendMessage("   §8Teleports anyone inside up above, refills the region.");
-                $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine delete <name> §7– Permanently delete a mine.");
-                $sender->sendMessage("   §8Removes it from config and cancels auto-resets.");
+                $sender->sendMessage($this->messages->get("mine_help_header"));
+                $sender->sendMessage($this->messages->get("mine_help_item1"));
                 $sender->sendMessage("");
 
-                $sender->sendMessage("§e/mine setblockxp <mine> <block> <xp> §7– Set XP drop for a specific block in a mine.");
-                $sender->sendMessage("   §8Updates the mine’s config and applies immediately.");
+                $sender->sendMessage($this->messages->get("mine_help_list"));
+                $sender->sendMessage($this->messages->get("mine_help_list_desc"));
                 $sender->sendMessage("");
-    
-                $sender->sendMessage("§e/mine reload §7– Reload this plugin.");
-                $sender->sendMessage("   §8Disables and re-enables MineCreator, reloading all settings.");
-                $sender->sendMessage("§6§l===============================");
+
+                $sender->sendMessage($this->messages->get("mine_help_pos"));
+                $sender->sendMessage($this->messages->get("mine_help_pos_desc"));
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_create"));
+                $sender->sendMessage($this->messages->get("mine_help_create_desc"));
+                foreach ($this->messages->get("mine_help_create_bullets") as $bullet) {
+                    $sender->sendMessage($bullet);
+                }
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_edit"));
+                $sender->sendMessage($this->messages->get("mine_help_edit_desc"));
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_reset"));
+                $sender->sendMessage($this->messages->get("mine_help_reset_desc"));
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_delete"));
+                $sender->sendMessage($this->messages->get("mine_help_delete_desc"));
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_setblockxp"));
+                $sender->sendMessage($this->messages->get("mine_help_setblockxp_desc"));
+                $sender->sendMessage("");
+
+                // NEW: blockdrop command help
+                $sender->sendMessage($this->messages->get("mine_help_blockdrop"));
+                $sender->sendMessage($this->messages->get("mine_help_blockdrop_desc"));
+                $sender->sendMessage("");
+
+                // NEW: minewarn command help
+                $sender->sendMessage($this->messages->get("mine_help_minewarn"));
+                $sender->sendMessage($this->messages->get("mine_help_minewarn_desc"));
+                $sender->sendMessage("");
+
+                $sender->sendMessage($this->messages->get("mine_help_reload"));
+                $sender->sendMessage($this->messages->get("mine_help_reload_desc"));
+                $sender->sendMessage($this->messages->get("mine_help_footer"));
                 return true;
             }
     
             if ($sub === 'setblockxp') {
                 if (count($args) !== 4) {
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §eUsage: §b/mine setblockxp <mine> <block> <xp>");
+                    $sender->sendMessage($this->messages->get("usage_setblockxp"));
                     return true;
                 }
                 [$_, $mineName, $blockInput, $xpRaw] = $args;
@@ -170,7 +188,7 @@ class Main extends PluginBase implements Listener {
                 // parse block name via parser
                 $item = StringToItemParser::getInstance()->parse(strtolower($blockInput));
                 if ($item === null || $item->isNull()) {
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cUnknown block: $blockInput");
+                    $sender->sendMessage(str_replace("{block}", $blockInput, $this->messages->get("unknown_block")));
                     return true;
                 }
                 // get alias key
@@ -178,7 +196,7 @@ class Main extends PluginBase implements Listener {
                 $alias   = strtolower(ltrim(array_shift($aliases), 'minecraft:'));
                 $xp      = max(0, (int)$xpRaw);
                 if (!$this->mines->exists($mineName)) {
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' not found!");
+                    $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
                     return true;
                 }
                 $data = $this->mines->get($mineName);
@@ -187,14 +205,65 @@ class Main extends PluginBase implements Listener {
                 $data['blockXp'] = $xpMap;
                 $this->mines->set($mineName, $data);
                 $this->mines->save();
-                $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aSet XP of $xp for block '$alias' in mine '$mineName'.");
+                $sender->sendMessage(
+                    str_replace(
+                        ["{xp}", "{alias}", "{mine}"],
+                        [$xp, $alias, $mineName],
+                        $this->messages->get("xp_set_success")
+                    )
+                );
+                return true;
+            }
+
+            if ($sub === 'blockdrop') {
+                if (count($args) !== 4) {
+                    $sender->sendMessage($this->messages->get("usage_blockdrop"));
+                    return true;
+                }
+                [$_, $mineName, $blockInput, $toggle] = $args;
+                $mineName = strtolower($mineName);
+                $item = StringToItemParser::getInstance()->parse(strtolower($blockInput));
+                if ($item === null || $item->isNull()) {
+                    $sender->sendMessage(str_replace("{block}", $blockInput, $this->messages->get("unknown_block")));
+                    return true;
+                }
+
+                $toggle = strtolower($toggle);
+                if (!in_array($toggle, ["true", "false"], true)) {
+                    $sender->sendMessage($this->messages->get("usage_blockdrop"));
+                    return true;
+                }
+
+                $block = $item->getBlock();
+                $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
+                $alias = strtolower(ltrim(array_shift($aliases), 'minecraft:'));
+
+                if (!$this->mines->exists($mineName)) {
+                    $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
+                    return true;
+                }
+
+                $data = $this->mines->get($mineName);
+                $dropMap = $data["blockDrop"] ?? [];
+                $dropMap[$alias] = $toggle === "true";
+                $data["blockDrop"] = $dropMap;
+                $this->mines->set($mineName, $data);
+                $this->mines->save();
+
+                $sender->sendMessage(
+                    str_replace(
+                        ["{block}", "{status}", "{mine}"],
+                        [$alias, $toggle, $mineName],
+                        $this->messages->get("block_drop_toggle_success")
+                    )
+                );
                 return true;
             }
 
             switch ($sub) {
                 case "position":
                     $name = $sender->getName();
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then break another for §bSecond§a pos.");
+                    $sender->sendMessage($this->messages->get("prompt_select_first"));
                     if (isset($this->selectionMode[$name]) || isset($this->firstPosition[$name]) || isset($this->secondPosition[$name])) {
                         unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
                     }
@@ -203,7 +272,7 @@ class Main extends PluginBase implements Listener {
     
                 case "create":
                     if (!isset($this->firstPosition[$sender->getName()], $this->secondPosition[$sender->getName()])) {
-                        $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cSelect two positions first with §e/mine position§c!");
+                        $sender->sendMessage($this->messages->get("must_select_positions"));
                         return true;
                     }
                     $this->openCreateForm($sender);
@@ -213,7 +282,7 @@ class Main extends PluginBase implements Listener {
                     if (isset($args[1])) {
                         $mineName = strtolower($args[1]);
                         if (!$this->mines->exists($mineName)) {
-                            $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' not found!");
+                            $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
                             return true;
                         }
                         $this->openEditForm($sender, $mineName);
@@ -226,12 +295,14 @@ class Main extends PluginBase implements Listener {
                     if (isset($args[1])) {
                         $mineName = strtolower($args[1]);
                         if (!$this->mines->exists($mineName)) {
-                            $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' not found!");
+                            $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
                             return true;
                         }
                         $this->resetMineByName($mineName);
                         if ($this->warnEnabled) {
-                            $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' has been reset.");
+                            $sender->sendMessage(
+                                str_replace("{mine}", $mineName, $this->messages->get("mine_reset_complete"))
+                            );
                         }
                     } else {
                         $this->openMineListForm($sender, "reset");
@@ -241,11 +312,13 @@ class Main extends PluginBase implements Listener {
                 case "list":
                     $mineNames = array_keys($this->mines->getAll());
                     if (empty($mineNames)) {
-                        $sender->sendMessage("§7[§l§dMine§r§7] §c>> §eNo mines have been created yet.");
+                        $sender->sendMessage($this->messages->get("no_mines_exist"));
                     } else {
-                        $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aAvailable Mines:");
+                        $sender->sendMessage($this->messages->get("available_mines"));
                         foreach ($mineNames as $mine) {
-                            $sender->sendMessage("§7[§l§dMine§r§7] §c>> §b- $mine");
+                            $sender->sendMessage(
+                                str_replace("{mine}", $mine, $this->messages->get("mine_list_entry"))
+                            );
                         }
                     }
                     break;
@@ -254,7 +327,7 @@ class Main extends PluginBase implements Listener {
                     if (isset($args[1])) {
                         $mineName = strtolower($args[1]);
                         if (!$this->mines->exists($mineName)) {
-                            $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' not found!");
+                            $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
                             return true;
                         }
                         $this->deleteMine($sender, $mineName);
@@ -265,17 +338,17 @@ class Main extends PluginBase implements Listener {
     
                 case "reload":
                     if (!$sender->hasPermission("minecreator.command.reload")) {
-                        $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cYou don't have permission to reload.");
+                        $sender->sendMessage($this->messages->get("no_permission_reload"));
                         return true;
                     }
                     $pm = $this->getServer()->getPluginManager();
                     $pm->disablePlugin($this);
                     $pm->enablePlugin($this);
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §aMineCreator has been reloaded!");
+                    $sender->sendMessage($this->messages->get("reload_success"));
                     break;
     
                 default:
-                    $sender->sendMessage("§7[§l§dMine§r§7] §c>> §cUnknown subcommand. Type §e/mine help §cfor a list of commands.");
+                    $sender->sendMessage($this->messages->get("generic_unknown"));
             }
     
             return true;
@@ -301,7 +374,7 @@ class Main extends PluginBase implements Listener {
         if ($message === "cancel") {
             if (isset($this->selectionMode[$name]) || isset($this->firstPosition[$name]) || isset($this->secondPosition[$name])) {
                 unset($this->selectionMode[$name], $this->firstPosition[$name], $this->secondPosition[$name]);
-                $player->sendMessage("§7[§l§dMine§r§7] §c>> §6Selection cancelled. You can start again.");
+                $player->sendMessage($this->messages->get("selection_cancelled"));
                 $event->cancel(); 
             }
         }
@@ -314,7 +387,9 @@ class Main extends PluginBase implements Listener {
         // ── Region-selection logic ──
         if (isset($this->selectionMode[$playerName]) && !isset($this->firstPosition[$playerName])) {
             $this->firstPosition[$playerName] = $event->getBlock()->getPosition();
-            $player->sendMessage("§7[§l§dMine§r§7] §c>> §aFirst position set at {$event->getBlock()->getPosition()}");
+            $player->sendMessage(
+                str_replace("{pos}", $event->getBlock()->getPosition(), $this->messages->get("first_position_set"))
+            );
             $event->cancel();
             return;
         }
@@ -343,7 +418,7 @@ class Main extends PluginBase implements Listener {
 
                     if ($block->getTypeId() === $luckyItem->getBlock()->getTypeId()) {
                         // -- DEBUG: lucky block detected
-                        $player->sendMessage("§a[LuckyBlock] §6You mined a lucky block!");
+                        $player->sendMessage($this->messages->get("luckyblock_found"));
                         $event->setDrops([]);
 
                         // Build flat chance map
@@ -364,7 +439,7 @@ class Main extends PluginBase implements Listener {
 
                         $total = array_sum($flat);
                         if ($total < 1) {
-                            $player->sendMessage("§c[LuckyBlock] total weight is zero, no drops will occur. Report to an admin!");
+                            $player->sendMessage($this->messages->get("luckyblock_zero_weight"));
                             return;
                         }
 
@@ -381,14 +456,16 @@ class Main extends PluginBase implements Listener {
                                 }
                             }
                             if ($chosen === null) {
-                                $player->sendMessage("§c[LuckyBlock] no item selected (unexpected). Report to an admin!");
+                                $player->sendMessage($this->messages->get("luckyblock_no_item"));
                                 continue;
                             }
                             $dropItem = StringToItemParser::getInstance()->parse($chosen);
                             if ($dropItem !== null) {
                                 $world->dropItem($pos, $dropItem);
                             } else {
-                                $player->sendMessage("§c[LuckyBlock] failed to parse item '$chosen'. Report to an admin!");
+                                $player->sendMessage(
+                                    str_replace("{item}", $chosen, $this->messages->get("luckyblock_parse_fail"))
+                                );
                             }
                         }
 
@@ -440,7 +517,7 @@ class Main extends PluginBase implements Listener {
                                 }
                             }
                         } elseif (!is_array($luckyData["commands"])) {
-                            $player->sendMessage("§c[LuckyBlock] Invalid 'commands' format in luckyblock.yml. Must be an array. Report to an admin!");
+                            $player->sendMessage($this->messages->get("luckyblock_invalid_cmd"));
                         }
 
                         // effects
@@ -463,6 +540,18 @@ class Main extends PluginBase implements Listener {
                 }
             }
 
+            // ── BLOCK DROP TOGGLE ──
+            $dropMap = $data["blockDrop"] ?? [];
+            $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
+            foreach ($aliases as $alias) {
+                $key = strtolower(ltrim($alias, "minecraft:"));
+                if (array_key_exists($key, $dropMap) && $dropMap[$key] === false) {
+                    $event->setDrops([]);
+                    break;
+                }
+            }
+
+            // ── XP DROP HANDLING ──
             $xpMap   = $data["blockXp"] ?? [];
             $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
             foreach ($aliases as $alias) {
@@ -491,7 +580,12 @@ class Main extends PluginBase implements Listener {
                                     if ($world instanceof World) {
                                         foreach ($world->getPlayers() as $pl) {
                                             $pl->sendMessage(
-                                                "§7[§l§dMine§r§7] §c>> §6Mine '{$this->mineName}' will reset in 5 seconds!"
+                                                str_replace(
+                                                    "{mine}",
+                                                    $this->mineName,
+                                                    $this->plugin->getMessage("mine_will_reset_in")
+
+                                                )
                                             );
                                         }
                                     }
@@ -550,9 +644,11 @@ class Main extends PluginBase implements Listener {
         if(isset($this->selectionMode[$name], $this->firstPosition[$name]) && !isset($this->secondPosition[$name])){
             $this->secondPosition[$name] = $event->getBlock()->getPosition();
             unset($this->selectionMode[$name]);
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aSecond position set at " . $event->getBlock()->getPosition());
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §bType §l§cCancel §r§bTo Start Over Or §l§e/mine create §r§bTo Create The Mine");
             $event->cancel();
+            $p->sendMessage(
+                str_replace("{pos}", $event->getBlock()->getPosition(), $this->messages->get("second_position_set"))
+            );
+            $p->sendMessage($this->messages->get("prompt_next_create"));
         }
     }
 
@@ -569,17 +665,15 @@ class Main extends PluginBase implements Listener {
             $playerName = $p->getName();
     
             if ($mineName === "" || empty($blocks)) {
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
+                $p->sendMessage($this->messages->get("invalid_name_or_blocklist"));
                 return;
             }
             if ($this->mines->exists($mineName)) {
-                $p->sendMessage(
-                    "§7[§l§dMine§r§7] §c>> §cA mine named '$mineName' already exists. Please choose another."
-                );
+                $p->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_already_exists_on_create")));
                 return;
             }
             if (!isset($this->firstPosition[$playerName], $this->secondPosition[$playerName])) {
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cYou must select two positions first with /mine position!");
+                $p->sendMessage($this->messages->get("select_positions_first"));
                 return;
             }
     
@@ -601,7 +695,7 @@ class Main extends PluginBase implements Listener {
             }
     
 
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' created!");
+            $p->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_created")));
             unset(
                 $this->selectionMode[$playerName],
                 $this->firstPosition[$playerName],
@@ -626,7 +720,10 @@ class Main extends PluginBase implements Listener {
 
         // Default values for lucky blocks
         $luckyEnabled = $data["lucky_blocks_enabled"] ?? false;
-        $availableLuckyTypes = array_keys($this->luckyBlockManager->getAllLuckyBlocks());
+        $allLuckyBlocks = $this->luckyBlockManager->getAllLuckyBlocks();
+        $excludedKeys = ["lucky_blocks_enabled", "lucky_block_types"];
+        $availableLuckyTypes = array_values(array_filter(array_keys($allLuckyBlocks), fn($key) => !in_array($key, $excludedKeys, true)));
+
         $selectedLucky = ($data["lucky_block_types"] ?? []);
         $selectedLuckyIndex = $availableLuckyTypes !== [] && isset($selectedLucky[0])
             ? array_search($selectedLucky[0], $availableLuckyTypes)
@@ -642,11 +739,17 @@ class Main extends PluginBase implements Listener {
             $resetTime = max(0, (int)$rawTime);
 
             if ($newName === "" || empty($blocks)) {
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cInvalid name or block list!");
+                $p->sendMessage($this->messages->get("invalid_name_or_blocklist"));
                 return;
             }
             if (strtolower($newName) !== strtolower($mineName) && $this->mines->exists($newName)) {
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §cA mine with the name '$newName' already exists!");
+                $p->sendMessage(
+                    str_replace(
+                        "{name}",
+                        $newName,
+                        $this->messages->get("mine_already_exists")
+                    )
+                );
                 return;
             }
             $this->cancelScheduledReset($mineName);
@@ -671,7 +774,13 @@ class Main extends PluginBase implements Listener {
 
             $this->resetMineByName($newName);
 
-            $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' updated to '$newName'!");
+            $p->sendMessage(
+                str_replace(
+                    ["{old}", "{new}"],
+                    [$mineName, $newName],
+                    $this->messages->get("mine_rename_success")
+                )
+            );
         });
 
         $form->setTitle("Edit Mine: $mineName");
@@ -697,7 +806,9 @@ class Main extends PluginBase implements Listener {
                 $this->openEditForm($p, $mine);
             } elseif($mode === "reset"){
                 $this->resetMineByName($mine);
-                $p->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mine' reset.");
+                $p->sendMessage(
+                    str_replace("{mine}", $mine, $this->messages->get("mine_reset_success"))
+                );
             } elseif($mode === "delete"){
                 $this->deleteMine($p, $mine);
             }
@@ -713,16 +824,45 @@ class Main extends PluginBase implements Listener {
     
     private function deleteMine(Player $player, string $mineName): void {
         if (!$this->mines->exists($mineName)) {
-            $player->sendMessage("§7[§l§dMine§r§7] §c>> §cMine '$mineName' does not exist.");
+            $player->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
             return;
         }
+
+        $data = $this->mines->get($mineName);
+        if (is_array($data) && isset($data["world"], $data["pos1"], $data["pos2"])) {
+            $worldName = $data["world"];
+            $world = $this->getServer()->getWorldManager()->getWorldByName($worldName);
+            if ($world instanceof World) {
+                $p1 = new Vector3(...$data["pos1"]);
+                $p2 = new Vector3(...$data["pos2"]);
+
+                $this->clearArea($world, $p1, $p2);
+
+                $whiteColor = new Color(255, 255, 255);
+                for ($x = min($p1->getX(), $p2->getX()); $x <= max($p1->getX(), $p2->getX()); $x++) {
+                    for ($y = min($p1->getY(), $p2->getY()); $y <= max($p1->getY(), $p2->getY()); $y++) {
+                        for ($z = min($p1->getZ(), $p2->getZ()); $z <= max($p1->getZ(), $p2->getZ()); $z++) {
+                            $pos = new Vector3($x + 0.5, $y + 0.5, $z + 0.5);
+                            $world->addParticle($pos, new DustParticle($whiteColor));
+                        }
+                    }
+                }
+
+                $centerX = ($p1->getX() + $p2->getX()) / 2;
+                $centerY = ($p1->getY() + $p2->getY()) / 2;
+                $centerZ = ($p1->getZ() + $p2->getZ()) / 2;
+                $centerPos = new Vector3($centerX, $centerY, $centerZ);
+                $world->addSound($centerPos, new ExplodeSound(5));
+            }
+        }
+
         $this->cancelScheduledReset($mineName);
 
         $this->mines->remove($mineName);
         $this->mines->save();
         unset($this->pendingEmptyResets[$mineName]);
 
-        $player->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '$mineName' deleted successfully.");
+        $player->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_deleted_success")));
     }
 
     private function cancelScheduledReset(string $name): void {
@@ -730,6 +870,10 @@ class Main extends PluginBase implements Listener {
             $this->scheduledTasks[$name]->cancel();
             unset($this->scheduledTasks[$name]);
         }
+    }
+
+    public function getMessages(): Config {
+        return $this->messages;
     }
     
     private function schedulePeriodicReset(string $name, int $intervalSec): void {
@@ -746,7 +890,9 @@ class Main extends PluginBase implements Listener {
                                 ->getWorldByName($mineData["world"]);
                             if ($world instanceof World) {
                                 foreach ($world->getPlayers() as $player) {
-                                    $player->sendMessage("§7[§l§dMine§r§7] §c>> §6Mine '{$this->mineName}' will reset in 5 seconds!");
+                                    $player->sendMessage(
+                                        str_replace("{mine}", $this->mineName, $this->plugin->getMessages()->get("mine_reset_warning"))
+                                    );
                                 }
                             }
                         }
@@ -787,7 +933,7 @@ class Main extends PluginBase implements Listener {
             $pos = $player->getPosition();
             if ($this->isInside($pos, $p1, $p2)) {
                 $player->teleport(new Vector3($pos->getX(), $topY, $pos->getZ()));
-                $player->sendMessage("§7[§l§dMine§r§7] §c>> §eYou have been teleported above the mine due to a reset.");
+                $player->sendMessage($this->messages->get("mine_reset_teleport"));
             }
         }
 
@@ -799,7 +945,9 @@ class Main extends PluginBase implements Listener {
         // Send reset notification if enabled
         if ($this->warnEnabled) {
             foreach ($world->getPlayers() as $player) {
-                $player->sendMessage("§7[§l§dMine§r§7] §c>> §aMine '{$name}' has been reset!");
+                $player->sendMessage(
+                    str_replace("{mine}", $name, $this->messages->get("mine_reset_complete"))
+                );
             }
         }
     }
