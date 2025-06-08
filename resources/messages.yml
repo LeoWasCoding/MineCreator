@@ -52,6 +52,8 @@ mine_help_setblockxp:    "§e/mine setblockxp <mine> <block> <xp> §7– Set XP 
 mine_help_setblockxp_desc: "   §8Updates the mine’s config and applies immediately."
 mine_help_blockdrop: "§e/mine blockdrop <mine> <block> <true|false> §7– Enable or disable drops for specific blocks in a mine"
 mine_help_blockdrop_desc: "    §8Toggle whether breaking a specific block in the mine drops items or not．"
+mine_help_silentreset:      "§e/mine silentreset <mine> <true|false> §7– Enable or disable silent resets for a mine."
+mine_help_silentreset_desc: "   §8When enabled, mine resets happen silently without warning or completion messages．"
 mine_help_minewarn: "§e/mine minewarn <mine> <true|false> §7– Enable or disable warning messages before a mine reset"
 mine_help_minewarn_desc: "   §8Control if players receive warnings when the mine is about to reset．"
 mine_help_reload:        "§e/mine reload §7– Reload this plugin."
