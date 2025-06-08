@@ -37,8 +37,8 @@ use pocketmine\world\sound\XpLevelUpSound;
 use pocketmine\world\sound\ExplodeSound;
 
 // ── External Libraries ──
-use jojoe77777\FormAPI\SimpleForm;
-use jojoe77777\FormAPI\CustomForm;
+use MineCreator\libs\jojoe77777\FormAPI\SimpleForm;
+use MineCreator\libs\jojoe77777\FormAPI\CustomForm;
 
 class Main extends PluginBase implements Listener {
 
@@ -346,6 +346,25 @@ class Main extends PluginBase implements Listener {
                     $pm->enablePlugin($this);
                     $sender->sendMessage($this->messages->get("reload_success"));
                     break;
+
+                case "silentreset":
+                    if (count($args) < 3) {
+                        $sender->sendMessage("§cUsage: /mine silentreset <mine> <true|false>");
+                        return true;
+                    }
+
+                    $mineName = $args[1];
+                    $value = strtolower($args[2]) === "true";
+
+                    if (!$this->mines->exists($mineName)) {
+                        $sender->sendMessage(str_replace("{mine}", $mineName, $this->messages->get("mine_not_found")));
+                        return true;
+                    }
+
+                    $this->setSilentReset($mineName, $value);
+                    $status = $value ? "enabled" : "disabled";
+                    $sender->sendMessage("§aSilent reset $status for mine '$mineName'.");
+                    return true;
     
                 default:
                     $sender->sendMessage($this->messages->get("generic_unknown"));
@@ -357,9 +376,18 @@ class Main extends PluginBase implements Listener {
         return false;
     }
     
-    
-    
-    
+    public function isSilentReset(string $mineName): bool {
+        $data = $this->mines->get($mineName);
+        return isset($data["silent_reset"]) && $data["silent_reset"] === true;
+    }
+
+    public function setSilentReset(string $mineName, bool $silent): void {
+        $data = $this->mines->get($mineName);
+        if (!is_array($data)) return;
+        $data["silent_reset"] = $silent;
+        $this->mines->set($mineName, $data);
+        $this->mines->save();
+    }
 
     public function getMineData(string $name): ?array {
         $data = $this->mines->get($name);
@@ -571,7 +599,7 @@ class Main extends PluginBase implements Listener {
                             && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
                             $this->plugin->pendingEmptyResets[$this->mineName] = true;
 
-                            if ($this->plugin->isWarnEnabled()) {
+                            if ($this->plugin->isWarnEnabled() && !$this->plugin->isSilentReset($this->mineName)) {
                                 $mineData = $this->plugin->getMineData($this->mineName);
                                 if ($mineData !== null) {
                                     $world = $this->plugin->getServer()
@@ -943,7 +971,7 @@ class Main extends PluginBase implements Listener {
         $this->fillArea($world, $p1, $p2, $data["blocks"]);
 
         // Send reset notification if enabled
-        if ($this->warnEnabled) {
+        if ($this->warnEnabled && !$this->isSilentReset($name)) {
             foreach ($world->getPlayers() as $player) {
                 $player->sendMessage(
                     str_replace("{mine}", $name, $this->messages->get("mine_reset_complete"))
