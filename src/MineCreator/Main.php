@@ -166,7 +166,12 @@ class Main extends PluginBase implements Listener {
                 $sender->sendMessage($this->messages->get("mine_help_blockdrop"));
                 $sender->sendMessage($this->messages->get("mine_help_blockdrop_desc"));
                 $sender->sendMessage("");
-
+                
+                // NEW: silentreset command help ;>
+                $sender->sendMessage($this->messages->get("mine_help_silentreset"));
+                $sender->sendMessage($this->messages->get("mine_help_silentreset_desc"));
+                $sender->sendMessage("");
+                
                 // NEW: minewarn command help
                 $sender->sendMessage($this->messages->get("mine_help_minewarn"));
                 $sender->sendMessage($this->messages->get("mine_help_minewarn_desc"));
