@@ -915,7 +915,7 @@ class Main extends PluginBase implements Listener {
                 public function __construct(private Main $plugin, private string $mineName) {}
     
                 public function onRun(): void {
-                    if ($this->plugin->isWarnEnabled()) {
+                    if ($this->plugin->isWarnEnabled() && !$this->plugin->isSilentReset($this->mineName)) {
                         $mineData = $this->plugin->getMineData($this->mineName);
                         if ($mineData !== null) {
                             $world = $this->plugin->getServer()
@@ -934,6 +934,7 @@ class Main extends PluginBase implements Listener {
                             }
                         }
                     }
+                }
                     
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
