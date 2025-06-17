@@ -1031,8 +1031,6 @@ class Main extends PluginBase implements Listener {
 
         $lucky = $this->getLuckyBlockManager();
 
-        // Collect all blocks to place first
-        $blocksToPlace = [];
         for ($x = $minX; $x <= $maxX; $x++) {
             for ($y = $minY; $y <= $maxY; $y++) {
                 for ($z = $minZ; $z <= $maxZ; $z++) {
@@ -1048,60 +1046,10 @@ class Main extends PluginBase implements Listener {
                     if ($item === null) continue;
 
                     $block = $item->getBlock();
-
-                    $blocksToPlace[] = ['pos' => new Vector3($x, $y, $z), 'block' => $block];
+                    $world->setBlock(new Vector3($x, $y, $z), $block, false);
                 }
             }
         }
-
-        $totalBlocks = count($blocksToPlace);
-        if ($totalBlocks === 0) return;
-
-        $animationDurationTicks = 40; // 2 seconds (20 ticks = 1 second)
-        $blocksPerTick = max(1, (int) ceil($totalBlocks / $animationDurationTicks));
-
-        $plugin = $this;
-
-        $task = new class($plugin, $blocksToPlace, $blocksPerTick, $world->getFolderName()) extends Task {
-            private int $currentIndex = 0;
-            private int $blocksPerTick;
-            private array $blocksToPlace;
-            private $plugin;
-            private string $worldName;
-
-            public function __construct($plugin, array $blocksToPlace, int $blocksPerTick, string $worldName) {
-                $this->plugin = $plugin;
-                $this->blocksToPlace = $blocksToPlace;
-                $this->blocksPerTick = $blocksPerTick;
-                $this->worldName = $worldName;
-            }
-
-            public function onRun(): void {
-                $world = $this->plugin->getServer()->getWorldManager()->getWorldByName($this->worldName);
-                if ($world === null) {
-                    $this->plugin->getScheduler()->cancelTask($this->getTaskId());
-                    return;
-                }
-
-                $count = 0;
-                while ($count < $this->blocksPerTick && $this->currentIndex < count($this->blocksToPlace)) {
-                    $data = $this->blocksToPlace[$this->currentIndex];
-                    $pos = $data['pos'];
-                    $block = $data['block'];
-
-                    $world->setBlock($pos, $block, false);
-
-                    $this->currentIndex++;
-                    $count++;
-                }
-
-                if ($this->currentIndex >= count($this->blocksToPlace)) {
-                    $this->plugin->getScheduler()->cancelTask($this->getTaskId());
-                }
-            }
-        };
-
-        $this->getScheduler()->scheduleRepeatingTask($task, 1);
     }
 
     private function clearArea(World $world, Vector3 $p1, Vector3 $p2): void {
