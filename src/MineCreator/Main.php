@@ -972,16 +972,6 @@ class Main extends PluginBase implements Listener {
             if ($this->isInside($pos, $p1, $p2)) {
                 $player->teleport(new Vector3($pos->getX(), $topY, $pos->getZ()));
                 $player->sendMessage($this->messages->get("mine_reset_teleport"));
-
-                if ($this->warnEnabled) {
-                    $player->sendMessage(
-                        str_replace(
-                            "{mine}",
-                            $mineName,
-                            $this->messages->get("mine_reset_complete")
-                        )
-                    );
-                }
             }
         }
 
