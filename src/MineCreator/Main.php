@@ -946,14 +946,16 @@ class Main extends PluginBase implements Listener {
                 public function __construct(private Main $plugin, private string $mineName) {}
     
                 public function onRun(): void {
-                    if ($this->plugin->isWarnEnabled() && !$this->plugin->isSilentReset($this->mineName)) {
-                        $mineData = $this->plugin->getMineData($this->mineName);
-                        if ($mineData !== null) {
-                            $world = $this->plugin->getServer()
-                                ->getWorldManager()
-                                ->getWorldByName($mineData["world"]);
-                            if ($world instanceof World) {
-                                foreach ($world->getPlayers() as $player) {
+                if (!$this->plugin->isSilentReset($this->mineName)) {
+                    $mineData = $this->plugin->getMineData($this->mineName);
+                    if ($mineData !== null) {
+                        $world = $this->plugin->getServer()
+                            ->getWorldManager()
+                            ->getWorldByName($mineData["world"]);
+                        if ($world instanceof World) {
+                            foreach ($world->getPlayers() as $player) {
+                                $playerName = strtolower($player->getName());
+                                if ($this->plugin->isMineWarnEnabledFor($playerName)) {
                                     $player->sendMessage(
                                         str_replace(
                                             "{mine}",
@@ -965,6 +967,7 @@ class Main extends PluginBase implements Listener {
                             }
                         }
                     }
+                }
                     
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
@@ -1012,13 +1015,20 @@ class Main extends PluginBase implements Listener {
         $this->fillArea($world, $p1, $p2, $data["blocks"]);
 
         // Send reset notification if enabled
-        if ($this->warnEnabled && !$this->isSilentReset($name)) {
+        if (!$this->isSilentReset($name)) {
             foreach ($world->getPlayers() as $player) {
-                $player->sendMessage(
-                    str_replace("{mine}", $name, $this->messages->get("mine_reset_complete"))
-                );
+                $playerName = strtolower($player->getName());
+                if ($this->isMineWarnEnabledFor($playerName)) {
+                    $player->sendMessage(
+                        str_replace("{mine}", $name, $this->messages->get("mine_reset_complete"))
+                    );
+                }
             }
         }
+    }
+
+    public function isMineWarnEnabledFor(string $playerName): bool {
+        return $this->mineWarns[strtolower($playerName)] ?? true;
     }
 
     private function fillArea(World $world, Vector3 $p1, Vector3 $p2, array $blocks): void {
