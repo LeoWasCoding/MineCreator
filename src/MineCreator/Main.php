@@ -923,9 +923,11 @@ class Main extends PluginBase implements Listener {
                                 ->getWorldByName($mineData["world"]);
                             if ($world instanceof World) {
                                 foreach ($world->getPlayers() as $player) {
-                                    $player->sendMessage(
-                                        str_replace("{mine}", $this->mineName, $this->plugin->getMessages()->get("mine_reset_warning"))
-                                    );
+                                    if ($this->warnEnabled) {
+                                        $player->sendMessage(
+                                            str_replace("{mine}", $mineName, $this->plugin->getMessages("mine_reset_complete"))
+                                        );
+                                    }
                                 }
                             }
                         }
