@@ -934,7 +934,6 @@ class Main extends PluginBase implements Listener {
                             }
                         }
                     }
-                }
                     
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
