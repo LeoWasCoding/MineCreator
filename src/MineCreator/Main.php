@@ -53,6 +53,8 @@ class Main extends PluginBase implements Listener {
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
     private bool $warnEnabled = true;
+    private array $mineWarnSettings = [];
+    private string $mineWarnsFile;
     
     /** @phpstan-ignore-next-line */
     /** @var TaskHandler[] */
@@ -68,6 +70,10 @@ class Main extends PluginBase implements Listener {
         return $this->warnEnabled;
     }
 
+    private function saveMineWarnSettings(): void {
+        file_put_contents($this->mineWarnsFile, json_encode($this->mineWarnSettings, JSON_PRETTY_PRINT));
+    }
+
     public function getLuckyBlockManager(): LuckyBlockManager {
         return $this->luckyBlockManager;
     }
@@ -80,11 +86,23 @@ class Main extends PluginBase implements Listener {
         @mkdir($this->getDataFolder());
         $this->saveResource("luckyblock.yml");
         $this->saveResource("messages.yml");
+
         $this->luckyBlocksConfig = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
         $this->luckyBlockManager = new LuckyBlockManager($this->getDataFolder());
         $this->messages = new Config($this->getDataFolder() . "messages.yml", Config::YAML);
         $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
+
+        $this->mineWarnsFile = $this->getDataFolder() . "minewarns.json";
+
+        if (!file_exists($this->mineWarnsFile)) {
+            file_put_contents($this->mineWarnsFile, json_encode([]));
+        }
+
+        $json = file_get_contents($this->mineWarnsFile);
+        $this->mineWarnSettings = json_decode($json, true, 512, JSON_THROW_ON_ERROR) ?? [];
+
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
+
         foreach ($this->mines->getAll() as $name => $data) {
             $interval = (int)($data["autoResetTime"] ?? 0);
             if ($interval > 0) {
@@ -98,6 +116,10 @@ class Main extends PluginBase implements Listener {
         $this->mines->save();
     }
 
+    public function isWarnEnabledForPlayer(Player $player): bool {
+        return $this->mineWarnSettings[$player->getName()] ?? false;
+    }
+
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
         if (!$sender instanceof Player) {
             $sender->sendMessage($this->messages->get("use_in_game"));
@@ -108,16 +130,25 @@ class Main extends PluginBase implements Listener {
         $sub  = isset($args[0]) ? strtolower($args[0]) : "";
     
         if ($name === "minewarn") {
+            if (!$sender instanceof Player) {
+                $sender->sendMessage("This command can only be used in-game.");
+                return true;
+            }
+
             if (!$sender->hasPermission("minecreator.command.minewarn")) {
                 $sender->sendMessage($this->messages->get("no_permission_minewarn"));
                 return true;
             }
+
             if (count($args) !== 1 || !in_array($sub, ["on", "off"], true)) {
                 $sender->sendMessage($this->messages->get("usage_minewarn"));
                 return true;
             }
-            $this->warnEnabled = ($sub === "on");
-            if ($this->warnEnabled) {
+
+            $this->mineWarnSettings[$sender->getName()] = ($sub === "on");
+            $this->saveMineWarnSettings();
+
+            if ($sub === "on") {
                 $sender->sendMessage($this->messages->get("minewarn_enabled"));
             } else {
                 $sender->sendMessage($this->messages->get("minewarn_disabled"));
@@ -1000,6 +1031,8 @@ class Main extends PluginBase implements Listener {
 
         $lucky = $this->getLuckyBlockManager();
 
+        // Collect all blocks to place first
+        $blocksToPlace = [];
         for ($x = $minX; $x <= $maxX; $x++) {
             for ($y = $minY; $y <= $maxY; $y++) {
                 for ($z = $minZ; $z <= $maxZ; $z++) {
@@ -1015,10 +1048,60 @@ class Main extends PluginBase implements Listener {
                     if ($item === null) continue;
 
                     $block = $item->getBlock();
-                    $world->setBlock(new Vector3($x, $y, $z), $block, false);
+
+                    $blocksToPlace[] = ['pos' => new Vector3($x, $y, $z), 'block' => $block];
                 }
             }
         }
+
+        $totalBlocks = count($blocksToPlace);
+        if ($totalBlocks === 0) return;
+
+        $animationDurationTicks = 40; // 2 seconds (20 ticks = 1 second)
+        $blocksPerTick = max(1, (int) ceil($totalBlocks / $animationDurationTicks));
+
+        $plugin = $this;
+
+        $task = new class($plugin, $blocksToPlace, $blocksPerTick, $world->getFolderName()) extends Task {
+            private int $currentIndex = 0;
+            private int $blocksPerTick;
+            private array $blocksToPlace;
+            private $plugin;
+            private string $worldName;
+
+            public function __construct($plugin, array $blocksToPlace, int $blocksPerTick, string $worldName) {
+                $this->plugin = $plugin;
+                $this->blocksToPlace = $blocksToPlace;
+                $this->blocksPerTick = $blocksPerTick;
+                $this->worldName = $worldName;
+            }
+
+            public function onRun(): void {
+                $world = $this->plugin->getServer()->getWorldManager()->getWorldByName($this->worldName);
+                if ($world === null) {
+                    $this->plugin->getScheduler()->cancelTask($this->getTaskId());
+                    return;
+                }
+
+                $count = 0;
+                while ($count < $this->blocksPerTick && $this->currentIndex < count($this->blocksToPlace)) {
+                    $data = $this->blocksToPlace[$this->currentIndex];
+                    $pos = $data['pos'];
+                    $block = $data['block'];
+
+                    $world->setBlock($pos, $block, false);
+
+                    $this->currentIndex++;
+                    $count++;
+                }
+
+                if ($this->currentIndex >= count($this->blocksToPlace)) {
+                    $this->plugin->getScheduler()->cancelTask($this->getTaskId());
+                }
+            }
+        };
+
+        $this->getScheduler()->scheduleRepeatingTask($task, 1);
     }
 
     private function clearArea(World $world, Vector3 $p1, Vector3 $p2): void {
