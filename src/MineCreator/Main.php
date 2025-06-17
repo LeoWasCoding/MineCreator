@@ -923,15 +923,18 @@ class Main extends PluginBase implements Listener {
                                 ->getWorldByName($mineData["world"]);
                             if ($world instanceof World) {
                                 foreach ($world->getPlayers() as $player) {
-                                    if ($this->warnEnabled) {
-                                        $player->sendMessage(
-                                            str_replace("{mine}", $mineName, $this->plugin->getMessages("mine_reset_complete"))
-                                        );
-                                    }
+                                    $player->sendMessage(
+                                        str_replace(
+                                            "{mine}",
+                                            $this->mineName,
+                                            $this->plugin->getMessages("mine_reset_complete")
+                                        )
+                                    );
                                 }
                             }
                         }
                     }
+                    
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
                             public function __construct(private Main $plugin, private string $mineName) {}
