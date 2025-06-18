@@ -70,10 +70,6 @@ class Main extends PluginBase implements Listener {
         return $this->warnEnabled;
     }
 
-    private function saveMineWarnSettings(): void {
-        file_put_contents($this->mineWarnsFile, json_encode($this->mineWarnSettings, JSON_PRETTY_PRINT));
-    }
-
     public function getLuckyBlockManager(): LuckyBlockManager {
         return $this->luckyBlockManager;
     }
@@ -101,6 +97,8 @@ class Main extends PluginBase implements Listener {
         $json = file_get_contents($this->mineWarnsFile);
         $this->mineWarnSettings = json_decode($json, true, 512, JSON_THROW_ON_ERROR) ?? [];
 
+        $this->loadMineWarns();
+
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
         foreach ($this->mines->getAll() as $name => $data) {
@@ -116,8 +114,17 @@ class Main extends PluginBase implements Listener {
         $this->mines->save();
     }
 
-    public function isWarnEnabledForPlayer(Player $player): bool {
-        return $this->mineWarnSettings[$player->getName()] ?? false;
+    public function isMineWarnEnabledFor(string $playerName): bool {
+        return $this->mineWarnSettings[strtolower($playerName)] ?? true;
+    }
+
+    private function loadMineWarns(): void {
+        $this->mineWarnSettings = $this->getConfig()->get("mineWarns", []);
+    }
+
+    private function saveMineWarnSettings(): void {
+        $this->getConfig()->set("mineWarns", $this->mineWarnSettings);
+        $this->getConfig()->save();
     }
 
     public function onCommand(CommandSender $sender, Command $cmd, string $label, array $args): bool {
@@ -125,16 +132,11 @@ class Main extends PluginBase implements Listener {
             $sender->sendMessage($this->messages->get("use_in_game"));
             return true;
         }
-    
+
         $name = $cmd->getName(); 
         $sub  = isset($args[0]) ? strtolower($args[0]) : "";
-    
-        if ($name === "minewarn") {
-            if (!$sender instanceof Player) {
-                $sender->sendMessage("This command can only be used in-game.");
-                return true;
-            }
 
+        if ($name === "minewarn") {
             if (!$sender->hasPermission("minecreator.command.minewarn")) {
                 $sender->sendMessage($this->messages->get("no_permission_minewarn"));
                 return true;
@@ -145,7 +147,7 @@ class Main extends PluginBase implements Listener {
                 return true;
             }
 
-            $this->mineWarnSettings[$sender->getName()] = ($sub === "on");
+            $this->mineWarnSettings[strtolower($sender->getName())] = ($sub === "on");
             $this->saveMineWarnSettings();
 
             if ($sub === "on") {
@@ -630,12 +632,14 @@ class Main extends PluginBase implements Listener {
             $this->getScheduler()->scheduleDelayedTask(
                 new class($this, $mineName) extends Task {
                     public function __construct(private Main $plugin, private string $mineName) {}
+
                     public function onRun(): void {
                         if ($this->plugin->isRegionEmpty($this->mineName)
                             && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
                             $this->plugin->pendingEmptyResets[$this->mineName] = true;
 
-                            if ($this->plugin->isWarnEnabled() && !$this->plugin->isSilentReset($this->mineName)) {
+                            // Remove the global isWarnEnabled() check; rely on per-player setting:
+                            if (!$this->plugin->isSilentReset($this->mineName)) {
                                 $mineData = $this->plugin->getMineData($this->mineName);
                                 if ($mineData !== null) {
                                     $world = $this->plugin->getServer()
@@ -643,14 +647,16 @@ class Main extends PluginBase implements Listener {
                                         ->getWorldByName($mineData["world"]);
                                     if ($world instanceof World) {
                                         foreach ($world->getPlayers() as $pl) {
-                                            $pl->sendMessage(
-                                                str_replace(
-                                                    "{mine}",
-                                                    $this->mineName,
-                                                    $this->plugin->getMessage("mine_will_reset_in")
-
-                                                )
-                                            );
+                                            // Check if this player has warnings enabled
+                                            if ($this->plugin->isMineWarnEnabledFor(strtolower($pl->getName()))) {
+                                                $pl->sendMessage(
+                                                    str_replace(
+                                                        "{mine}",
+                                                        $this->mineName,
+                                                        $this->plugin->getMessages()->get("mine_will_reset_in")
+                                                    )
+                                                );
+                                            }
                                         }
                                     }
                                 }
@@ -659,6 +665,7 @@ class Main extends PluginBase implements Listener {
                             $this->plugin->getScheduler()->scheduleDelayedTask(
                                 new class($this->plugin, $this->mineName) extends Task {
                                     public function __construct(private Main $plugin, private string $mineName) {}
+
                                     public function onRun(): void {
                                         $this->plugin->resetMineByName($this->mineName);
                                         $this->plugin->pendingEmptyResets[$this->mineName] = false;
@@ -944,34 +951,35 @@ class Main extends PluginBase implements Listener {
         $handler = $this->getScheduler()->scheduleRepeatingTask(
             new class($this, $name) extends Task {
                 public function __construct(private Main $plugin, private string $mineName) {}
-    
+
                 public function onRun(): void {
-                if (!$this->plugin->isSilentReset($this->mineName)) {
-                    $mineData = $this->plugin->getMineData($this->mineName);
-                    if ($mineData !== null) {
-                        $world = $this->plugin->getServer()
-                            ->getWorldManager()
-                            ->getWorldByName($mineData["world"]);
-                        if ($world instanceof World) {
-                            foreach ($world->getPlayers() as $player) {
-                                $playerName = strtolower($player->getName());
-                                if ($this->plugin->isMineWarnEnabledFor($playerName)) {
-                                    $player->sendMessage(
-                                        str_replace(
-                                            "{mine}",
-                                            $this->mineName,
-                                            $this->plugin->getMessages()->get("mine_reset_warning")
-                                        )
-                                    );
+                    if (!$this->plugin->isSilentReset($this->mineName)) {
+                        $mineData = $this->plugin->getMineData($this->mineName);
+                        if ($mineData !== null) {
+                            $world = $this->plugin->getServer()
+                                ->getWorldManager()
+                                ->getWorldByName($mineData["world"]);
+                            if ($world instanceof World) {
+                                foreach ($world->getPlayers() as $player) {
+                                    $playerName = strtolower($player->getName());
+                                    if ($this->plugin->isMineWarnEnabledFor($playerName)) {
+                                        $player->sendMessage(
+                                            str_replace(
+                                                "{mine}",
+                                                $this->mineName,
+                                                $this->plugin->getMessages()->get("mine_reset_warning")
+                                            )
+                                        );
+                                    }
                                 }
                             }
                         }
                     }
-                }
-                    
+
                     $this->plugin->getScheduler()->scheduleDelayedTask(
                         new class($this->plugin, $this->mineName) extends Task {
                             public function __construct(private Main $plugin, private string $mineName) {}
+
                             public function onRun(): void {
                                 $this->plugin->resetMineByName($this->mineName);
                             }
@@ -982,7 +990,7 @@ class Main extends PluginBase implements Listener {
             },
             $intervalSec * 20
         );
-    
+
         $this->scheduledTasks[$name] = $handler;
     }
 
@@ -1000,7 +1008,6 @@ class Main extends PluginBase implements Listener {
         $p2   = new Vector3(...$data["pos2"]);
         $topY = max($p1->getY(), $p2->getY()) + 1;
 
-        // Teleport players out of the mine during reset
         foreach ($world->getPlayers() as $player) {
             $pos = $player->getPosition();
             if ($this->isInside($pos, $p1, $p2)) {
@@ -1011,10 +1018,8 @@ class Main extends PluginBase implements Listener {
 
         $this->clearArea($world, $p1, $p2);
 
-        // Fill the mine area with blocks (including lucky blocks)
         $this->fillArea($world, $p1, $p2, $data["blocks"]);
 
-        // Send reset notification if enabled
         if (!$this->isSilentReset($name)) {
             foreach ($world->getPlayers() as $player) {
                 $playerName = strtolower($player->getName());
@@ -1025,10 +1030,6 @@ class Main extends PluginBase implements Listener {
                 }
             }
         }
-    }
-
-    public function isMineWarnEnabledFor(string $playerName): bool {
-        return $this->mineWarns[strtolower($playerName)] ?? true;
     }
 
     private function fillArea(World $world, Vector3 $p1, Vector3 $p2, array $blocks): void {
