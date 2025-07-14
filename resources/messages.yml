@@ -22,7 +22,7 @@ use_in_game: "Use in-game!"
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │                               /minewarn                                    │
 # └────────────────────────────────────────────────────────────────────────────┘
-no_permission_minewarn: "§7[§l§dMine§r§7] §c>> §cYou don't have permission to toggle mine warnings."
+no_permission_minewarn: "§7[§l§dMine§r§7] §c>> §cYou don't have permission to toggle mine warnings!"
 usage_minewarn:         "§7[§l§dMine§r§7] §c>> §eUsage: §b/minewarn <on|off>"
 minewarn_enabled:       "§7[§l§dMine§r§7] §c>> §aMine reset warnings §benabled§a."
 minewarn_disabled:      "§7[§l§dMine§r§7] §c>> §cMine reset warnings §bdisabled§c."
