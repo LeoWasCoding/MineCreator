@@ -87,7 +87,7 @@ class Main extends PluginBase implements Listener {
         ]);
         $this->warnEnabled       = (bool) $config->get("warnEnabled", false);
         $this->mineWarnSettings  = $config->get("mineWarns", []);
-
+        $this->saveResource("messages.yml");
         $this->saveResource("luckyblock.yml");
         $this->luckyBlocksConfig = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
         $this->luckyBlockManager = new LuckyBlockManager($this->getDataFolder());
