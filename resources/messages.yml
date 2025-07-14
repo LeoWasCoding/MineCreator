@@ -35,7 +35,7 @@ mine_help_item1:         "§e/mine help §7– Show this help menu."
 mine_help_list:          "§e/mine list §7– List all existing mines."
 mine_help_list_desc:     "   §8Shows you every mine by name．"
 mine_help_pos:           "§e/mine position §7– Start defining a new mine region."
-mine_help_pos_desc:      "   §8Break one block for the §bfirst corner§8, then another for the §bsecond corner§8．"
+mine_help_pos_desc:      "   §8Break one block for the §bfirst corner§8, then right click another for the §bsecond corner§8．"
 mine_help_create:        "§e/mine create §7– Open the Create Mine form."
 mine_help_create_desc:   "   §8After selecting positions， this lets you:"
 mine_help_create_bullets:
