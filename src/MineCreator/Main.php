@@ -52,7 +52,7 @@ class Main extends PluginBase implements Listener {
     private Config $mines;
     /** @var array<string,bool> */
     public array $pendingEmptyResets = [];
-    private bool $warnEnabled = true;
+    private bool $warnEnabled = false;
     private array $mineWarnSettings = [];
     private string $mineWarnsFile;
     
@@ -80,29 +80,31 @@ class Main extends PluginBase implements Listener {
 
     public function onEnable(): void {
         @mkdir($this->getDataFolder());
-        $this->saveResource("luckyblock.yml");
-        $this->saveResource("messages.yml");
+        $this->saveResource("config.yml", false);
+        $config = new Config($this->getDataFolder() . "config.yml", Config::YAML, [
+            "warnEnabled"   => false,
+            "mineWarns"     => [],
+        ]);
+        $this->warnEnabled       = (bool) $config->get("warnEnabled", false);
+        $this->mineWarnSettings  = $config->get("mineWarns", []);
 
+        $this->saveResource("luckyblock.yml");
         $this->luckyBlocksConfig = new Config($this->getDataFolder() . "luckyblock.yml", Config::YAML);
         $this->luckyBlockManager = new LuckyBlockManager($this->getDataFolder());
-        $this->messages = new Config($this->getDataFolder() . "messages.yml", Config::YAML);
-        $this->mines = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
+        $this->messages          = new Config($this->getDataFolder() . "messages.yml", Config::YAML);
+        $this->mines             = new Config($this->getDataFolder() . "mines.json", Config::JSON, []);
 
         $this->mineWarnsFile = $this->getDataFolder() . "minewarns.json";
-
         if (!file_exists($this->mineWarnsFile)) {
             file_put_contents($this->mineWarnsFile, json_encode([]));
         }
-
         $json = file_get_contents($this->mineWarnsFile);
         $this->mineWarnSettings = json_decode($json, true, 512, JSON_THROW_ON_ERROR) ?? [];
-
-        $this->loadMineWarns();
 
         $this->getServer()->getPluginManager()->registerEvents($this, $this);
 
         foreach ($this->mines->getAll() as $name => $data) {
-            $interval = (int)($data["autoResetTime"] ?? 0);
+            $interval = (int) ($data["autoResetTime"] ?? 0);
             if ($interval > 0) {
                 $this->schedulePeriodicReset($name, $interval);
             }
@@ -115,7 +117,7 @@ class Main extends PluginBase implements Listener {
     }
 
     public function isMineWarnEnabledFor(string $playerName): bool {
-        return $this->mineWarnSettings[strtolower($playerName)] ?? true;
+        return $this->mineWarnSettings[strtolower($playerName)] ?? false;
     }
 
     private function loadMineWarns(): void {
