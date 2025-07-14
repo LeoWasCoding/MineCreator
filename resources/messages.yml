@@ -74,7 +74,7 @@ block_drop_toggle_success: "§aBlock drop for '{block}' in mine '{mine}' set to 
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │                             /mine position                                 │
 # └────────────────────────────────────────────────────────────────────────────┘
-prompt_select_first:     "§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then break another for §bSecond§a pos."
+prompt_select_first:     "§7[§l§dMine§r§7] §c>> §aBreak one block for §bFirst§a pos, then righ-click another for §bSecond§a pos."
 
 # ┌────────────────────────────────────────────────────────────────────────────┐
 # │                            /mine create logic                              │
