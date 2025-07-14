@@ -447,14 +447,13 @@ class Main extends PluginBase implements Listener {
     }
 
     public function onBlockBreak(BlockBreakEvent $event): void {
-        $player     = $event->getPlayer();
+        $player = $event->getPlayer();
         $playerName = $player->getName();
 
-        // ── Region-selection logic ──
-        if (isset($this->selectionMode[$playerName]) && !isset($this->firstPosition[$playerName])) {
+        if (isset($this->selectionMode[$playerName])) {
             $this->firstPosition[$playerName] = $event->getBlock()->getPosition();
             $player->sendMessage(
-                str_replace("{pos}", $event->getBlock()->getPosition(), $this->messages->get("first_position_set"))
+                str_replace("{pos}", (string) $event->getBlock()->getPosition(), $this->messages->get("first_position_set"))
             );
             $event->cancel();
             return;
@@ -708,16 +707,20 @@ class Main extends PluginBase implements Listener {
         return key($flatList) ?? "";
     }
  
-    public function onPlayerInteract(BlockBreakEvent $event): void {
-        $p    = $event->getPlayer();
+    public function onPlayerInteract(PlayerInteractEvent $event): void {
+        $p = $event->getPlayer();
         $name = $p->getName();
 
-        if(isset($this->selectionMode[$name], $this->firstPosition[$name]) && !isset($this->secondPosition[$name])){
+        if ($event->getAction() !== PlayerInteractEvent::RIGHT_CLICK_BLOCK) {
+            return;
+        }
+
+        if (isset($this->selectionMode[$name], $this->firstPosition[$name]) && !isset($this->secondPosition[$name])) {
             $this->secondPosition[$name] = $event->getBlock()->getPosition();
             unset($this->selectionMode[$name]);
             $event->cancel();
             $p->sendMessage(
-                str_replace("{pos}", $event->getBlock()->getPosition(), $this->messages->get("second_position_set"))
+                str_replace("{pos}", (string) $event->getBlock()->getPosition(), $this->messages->get("second_position_set"))
             );
             $p->sendMessage($this->messages->get("prompt_next_create"));
         }
