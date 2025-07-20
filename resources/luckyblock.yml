@@ -47,3 +47,9 @@ diamond_lucky_block:
   effects:
     particles: true
     sound: true
+
+  # This is like a punishment lol, new placeholders: {player} and {luckyblock-coords}
+  broadcast-msg:
+    enabled: true
+    chance: 25
+    message: "&e{player} &7just uncovered a &6Lucky Block &7at &b{luckyblock-coords}&7!"
