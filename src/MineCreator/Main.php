@@ -8,6 +8,7 @@ use pocketmine\player\Player;
 use pocketmine\command\Command;
 use pocketmine\command\CommandSender;
 use pocketmine\utils\Config;
+use pocketmine\utils\TextFormat;
 
 // ── Blocks & Items ──
 use pocketmine\block\VanillaBlocks;
