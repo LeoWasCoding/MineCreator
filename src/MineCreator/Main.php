@@ -483,7 +483,6 @@ class Main extends PluginBase implements Listener {
                     if ($luckyItem === null) continue;
 
                     if ($block->getTypeId() === $luckyItem->getBlock()->getTypeId()) {
-                        $player->sendMessage($this->messages->get("luckyblock_found"));
                         $event->setDrops([]);
 
                         $flat = [];
