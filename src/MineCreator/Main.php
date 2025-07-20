@@ -474,7 +474,6 @@ class Main extends PluginBase implements Listener {
             $p2 = new Vector3(...$data["pos2"]);
             if (!$this->isInside($pos, $p1, $p2)) continue;
 
-            // ── LUCKY BLOCK DETECTION ──
             if (($data["lucky_blocks_enabled"] ?? false) && isset($data["lucky_block_types"])) {
                 foreach ($data["lucky_block_types"] as $luckyName) {
                     $luckyData = $this->luckyBlockManager->get($luckyName);
@@ -484,11 +483,9 @@ class Main extends PluginBase implements Listener {
                     if ($luckyItem === null) continue;
 
                     if ($block->getTypeId() === $luckyItem->getBlock()->getTypeId()) {
-                        // -- DEBUG: lucky block detected
                         $player->sendMessage($this->messages->get("luckyblock_found"));
                         $event->setDrops([]);
 
-                        // Build flat chance map
                         $flat = [];
                         if (!empty($luckyData["drop_list"])) {
                             if (is_string(array_key_first($luckyData["drop_list"]))) {
@@ -536,22 +533,18 @@ class Main extends PluginBase implements Listener {
                             }
                         }
 
-                        // ── COMMAND EXECUTION ──
                         if (
                             isset($luckyData["min_cmd_count"], $luckyData["max_cmd_count"]) &&
                             is_array($luckyData["commands"]) &&
                             !empty($luckyData["commands"])
                         ) {
-                            // Normalize command chance list
                             $cmdMap = [];
 
                             if (is_string(array_key_first($luckyData["commands"]))) {
-                                // Format: command => chance
                                 foreach ($luckyData["commands"] as $cmd => $chance) {
                                     $cmdMap[$cmd] = (int)$chance;
                                 }
                             } else {
-                                // Format: list of arrays
                                 foreach ($luckyData["commands"] as $entry) {
                                     if (is_array($entry)) {
                                         foreach ($entry as $cmd => $chance) {
@@ -587,9 +580,8 @@ class Main extends PluginBase implements Listener {
                             $player->sendMessage($this->messages->get("luckyblock_invalid_cmd"));
                         }
 
-                        // effects
                         if (!empty($luckyData["effects"]["particles"])) {
-                            $color = new Color(255, 255, 0); // Yellow color :P (for the luckyblock effect ofc)
+                            $color = new Color(255, 255, 0);
                             for ($i = 0; $i < 12; $i++) {
                                 $dx = mt_rand(-50, 50) / 100;
                                 $dy = mt_rand(-50, 50) / 100;
@@ -602,12 +594,32 @@ class Main extends PluginBase implements Listener {
                             $world->addSound($pos, new XpLevelUpSound(5));
                         }
 
+                        if (($luckyData["broadcast-msg"]["enabled"] ?? false) === true) {
+                            $chance = (int)($luckyData["broadcast-msg"]["chance"] ?? 100);
+                            $roll = mt_rand(1, 100);
+
+                            if ($roll <= $chance) {
+                                $template = $luckyData["broadcast-msg"]["message"] ?? "{player} mined a lucky block at {luckyblock-coords}!";
+
+                                $formattedMessage = str_replace(
+                                    ["{player}", "{luckyblock-coords}"],
+                                    [$player->getName(), "({$pos->getX()}, {$pos->getY()}, {$pos->getZ()})"],
+                                    $template
+                                );
+
+                                $formattedMessage = TextFormat::colorize($formattedMessage);
+
+                                foreach ($this->getServer()->getOnlinePlayers() as $onlinePlayer) {
+                                    $onlinePlayer->sendMessage($formattedMessage);
+                                }
+                            }
+                        }
+
                         return;
                     }
                 }
             }
 
-            // ── BLOCK DROP TOGGLE ──
             $dropMap = $data["blockDrop"] ?? [];
             $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
             foreach ($aliases as $alias) {
@@ -618,7 +630,6 @@ class Main extends PluginBase implements Listener {
                 }
             }
 
-            // ── XP DROP HANDLING ──
             $xpMap   = $data["blockXp"] ?? [];
             $aliases = StringToItemParser::getInstance()->lookupBlockAliases($block);
             foreach ($aliases as $alias) {
@@ -639,7 +650,6 @@ class Main extends PluginBase implements Listener {
                             && empty($this->plugin->pendingEmptyResets[$this->mineName])) {
                             $this->plugin->pendingEmptyResets[$this->mineName] = true;
 
-                            // Remove the global isWarnEnabled() check; rely on per-player setting:
                             if (!$this->plugin->isSilentReset($this->mineName)) {
                                 $mineData = $this->plugin->getMineData($this->mineName);
                                 if ($mineData !== null) {
@@ -648,7 +658,6 @@ class Main extends PluginBase implements Listener {
                                         ->getWorldByName($mineData["world"]);
                                     if ($world instanceof World) {
                                         foreach ($world->getPlayers() as $pl) {
-                                            // Check if this player has warnings enabled
                                             if ($this->plugin->isMineWarnEnabledFor(strtolower($pl->getName()))) {
                                                 $pl->sendMessage(
                                                     str_replace(
